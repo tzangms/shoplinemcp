@@ -1,5 +1,7 @@
 pyproject.toml
 src/shopline_mcp/__init__.py
+src/shopline_mcp/api.py
+src/shopline_mcp/server.py
 src/shopline_mcp.egg-info/PKG-INFO
 src/shopline_mcp.egg-info/SOURCES.txt
 src/shopline_mcp.egg-info/dependency_links.txt
