@@ -1,0 +1,2 @@
+[console_scripts]
+shopline-mcp = shopline_mcp.server:main
