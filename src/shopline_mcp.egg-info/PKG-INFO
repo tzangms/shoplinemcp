@@ -7,6 +7,7 @@ Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 Requires-Dist: mcp[cli]>=1.2.0
 Requires-Dist: httpx>=0.27.0
+Requires-Dist: requests>=2.31.0
 
 # shopline-mcp
 
