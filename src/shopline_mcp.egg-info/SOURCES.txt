@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 src/shopline_mcp/__init__.py
 src/shopline_mcp/api.py

@@ -1,5 +1,7 @@
 """Shopline MCP server."""
 
+import re
+
 from mcp.server.fastmcp import FastMCP
 
 from . import api
@@ -8,8 +10,46 @@ mcp = FastMCP("shopline")
 
 
 @mcp.tool()
+def verify_order_owner(order_number: str, email: str = "", phone: str = "") -> str:
+    """Verify that the customer is the owner of an order.
+    MUST be called before sharing any order details.
+    Pass the order number and the email or phone the customer provided.
+
+    Args:
+        order_number: Order number
+        email: Email provided by the customer (optional)
+        phone: Phone provided by the customer (optional)
+    """
+    provided_email = email.strip().lower()
+    provided_phone = re.sub(r"\D", "", phone)
+    if not provided_email and not provided_phone:
+        return "FAILED: Customer must provide either email or phone for verification."
+
+    orders = api.search_orders(order_number, limit=1)
+    if not orders:
+        return f"FAILED: Order {order_number} not found."
+    order = orders[0]
+
+    order_email = (order.get("customer_email") or "").strip().lower()
+    order_phone = re.sub(r"\D", "", order.get("customer_phone") or "")
+
+    if provided_email and provided_email == order_email:
+        return f"VERIFIED: Email matches for order {order_number}."
+    if provided_phone and provided_phone == order_phone:
+        return f"VERIFIED: Phone matches for order {order_number}."
+
+    delivery_data = order.get("delivery_data", {})
+    recipient_phone = re.sub(r"\D", "", delivery_data.get("recipient_phone") or "")
+    if provided_phone and provided_phone == recipient_phone:
+        return f"VERIFIED: Phone matches for order {order_number}."
+
+    return f"FAILED: The provided information does not match order {order_number}. Advise the customer to double-check or contact support."
+
+
+@mcp.tool()
 def search_orders(query: str) -> str:
     """Search orders by customer email, phone, or order number.
+    Personal info in results is masked. Verify customer identity before sharing details.
 
     Args:
         query: Customer email, phone number, or order number
@@ -19,12 +59,18 @@ def search_orders(query: str) -> str:
         return f"No orders found for '{query}'."
     lines = []
     for o in orders:
+        total = api.fmt_money(o.get("total", "?"))
+        order_number = o.get("order_number", o.get("id", "?"))
+        order_id = o.get("id")
+        order_label = f"Order {order_number}"
+        if order_id:
+            order_label += f" (ID: {order_id})"
         lines.append(
-            f"Order {o.get('order_number', o.get('id', '?'))}: "
+            f"{order_label}: "
             f"status={o.get('status', '?')}, "
             f"payment={o.get('order_payment', {}).get('status', '?')}, "
             f"delivery={o.get('order_delivery', {}).get('status', '?')}, "
-            f"total={o.get('total', '?')}, "
+            f"total={total}, "
             f"date={str(o.get('created_at', ''))[:10]}"
         )
     return "\n".join(lines)
@@ -32,7 +78,8 @@ def search_orders(query: str) -> str:
 
 @mcp.tool()
 def get_order_detail(order_id: str) -> str:
-    """Get detailed information about a specific order including items, payment, and shipping.
+    """Get order details (items, payment status, shipping).
+    Personal info is masked. Only share with verified order owner.
 
     Args:
         order_id: The order ID
@@ -42,79 +89,90 @@ def get_order_detail(order_id: str) -> str:
         return f"Order {order_id} not found."
 
     items_list = o.get("subtotal_items", o.get("line_items", []))
-    items = ", ".join(f"{li.get('title', '?')} x{li.get('quantity', 1)}" for li in items_list)
+    item_strs = []
+    for li in items_list:
+        title = li.get("title") or api.get_title(li) or "?"
+        qty = li.get("quantity", 1)
+        item_strs.append(f"{title} x{qty}")
+    items = ", ".join(item_strs)
 
     payment = o.get("order_payment", {})
     delivery = o.get("order_delivery", {})
     delivery_data = o.get("delivery_data", {})
     tracking = delivery_data.get("tracking_no", delivery_data.get("tracking_number", "N/A"))
 
+    total = api.fmt_money(o.get("total", "?"))
+    payment_method = payment.get("method", payment.get("payment_type", "N/A"))
+
     parts = [
         f"Order {o.get('order_number', o.get('id'))}",
         f"Status: {o.get('status', '?')}",
-        f"Payment: {payment.get('status', '?')} ({payment.get('method', 'N/A')})",
+        f"Payment: {payment.get('status', '?')} ({payment_method})",
         f"Delivery: {delivery.get('status', '?')}",
         f"Tracking: {tracking}",
-        f"Total: {o.get('total', '?')} {o.get('currency', '')}",
+        f"Total: {total}",
         f"Items: {items}",
-        f"Customer: {o.get('customer_name', 'N/A')} ({o.get('customer_email', 'N/A')})",
+        f"Customer: {o.get('customer_name', 'N/A')} ({api.mask_email(o.get('customer_email'))})",
         f"Created: {str(o.get('created_at', ''))[:10]}",
     ]
-    address = o.get("delivery_address", {})
-    if address:
-        addr_str = f"{address.get('address_1', '')} {address.get('city', '')} {address.get('country_code', '')}".strip()
-        if addr_str:
-            parts.append(f"Ship to: {address.get('recipient_name', '')} - {addr_str}")
+    masked_addr = api.mask_address(o.get("delivery_address"))
+    if masked_addr:
+        parts.append(f"Ship to: {masked_addr}")
     return "\n".join(parts)
 
 
 @mcp.tool()
 def get_order_fulfillments(order_id: str) -> str:
     """Get shipping/fulfillment status and tracking numbers for an order.
+    Only share with verified order owner.
 
     Args:
         order_id: The order ID
     """
-    fulfillments = api.get_order_fulfillments(order_id)
-    if not fulfillments:
-        return f"No fulfillment info found for order {order_id}."
-    lines = []
-    for fl in fulfillments:
-        status = fl.get("status", "unknown")
-        location = fl.get("assigned_location", {}).get("name", "N/A")
-        fl_items = ", ".join(
-            f"{li.get('title', li.get('sku', '?'))} x{li.get('quantity', 1)}"
-            for li in fl.get("line_items", [])
-        )
-        lines.append(f"Fulfillment: status={status}, location={location}, items=[{fl_items}]")
-    return "\n".join(lines)
+    o = api.get_order_fulfillments(order_id)
+    if not o:
+        return f"Order {order_id} not found."
+    delivery = o.get("order_delivery", {})
+    delivery_data = o.get("delivery_data", {})
+    tracking = delivery_data.get("tracking_no", delivery_data.get("tracking_number", "N/A"))
+    return (
+        f"Order {o.get('order_number', order_id)}\n"
+        f"Delivery status: {delivery.get('status', '?')}\n"
+        f"Tracking number: {tracking}\n"
+        f"Delivery platform: {delivery.get('delivery_platform', 'N/A')}"
+    )
 
 
 @mcp.tool()
 def get_order_transactions(order_id: str) -> str:
-    """Get payment transaction history for an order (payments, refunds).
+    """Get payment info for an order. Contains sensitive payment data -- only share with verified order owner.
 
     Args:
         order_id: The order ID
     """
-    transactions = api.get_order_transactions(order_id)
-    if not transactions:
-        return f"No transactions found for order {order_id}."
-    lines = []
-    for t in transactions:
-        lines.append(
-            f"Transaction {t.get('id', '?')}: "
-            f"kind={t.get('kind', '?')}, "
-            f"status={t.get('status', '?')}, "
-            f"amount={t.get('amount', '?')} {t.get('currency', '')}, "
-            f"gateway={t.get('gateway', 'N/A')}"
-        )
-    return "\n".join(lines)
+    o = api.get_order_transactions(order_id)
+    if not o:
+        return f"Order {order_id} not found."
+    payment = o.get("order_payment", {})
+    if not payment:
+        return f"No payment info found for order {order_id}."
+    amount = api.fmt_money(payment.get("total", "?"))
+    parts = [
+        f"Payment for order {o.get('order_number', order_id)}:",
+        f"  Method: {payment.get('payment_type', 'N/A')}",
+        f"  Status: {payment.get('status', '?')}",
+        f"  Amount: {amount}",
+        f"  Paid at: {str(payment.get('paid_at', 'N/A'))[:19]}",
+    ]
+    last_four = payment.get("last_four_digits")
+    if last_four:
+        parts.append(f"  Card: ****{last_four}")
+    return "\n".join(parts)
 
 
 @mcp.tool()
 def cancel_order(order_id: str, reason: str = "Cancelled via MCP") -> str:
-    """Cancel an order. Use with caution -- this cannot be undone.
+    """Cancel an order. This cannot be undone. Requires explicit customer confirmation before executing.
 
     Args:
         order_id: The order ID
@@ -129,7 +187,7 @@ def cancel_order(order_id: str, reason: str = "Cancelled via MCP") -> str:
 
 @mcp.tool()
 def search_products(keyword: str) -> str:
-    """Search products by keyword.
+    """Search products by keyword. Returns product name, price, and stock availability (not exact quantities).
 
     Args:
         keyword: Search keyword
@@ -139,16 +197,21 @@ def search_products(keyword: str) -> str:
         return f"No products found for '{keyword}'."
     lines = []
     for p in products[:10]:
-        variants = p.get("variants", [{}])
-        price = variants[0].get("price", "?") if variants else "?"
-        inventory = sum(v.get("inventory_quantity", 0) for v in variants)
-        lines.append(f"{p.get('title', '?')} (ID: {p.get('id', '?')}): price={price}, stock={inventory}")
+        title = api.get_title(p)
+        variants = p.get("variants", p.get("variations", []))
+        if variants:
+            price = api.fmt_money(variants[0].get("price", "?"))
+            total_qty = sum(v.get("inventory_quantity", v.get("quantity", 0)) for v in variants)
+        else:
+            price = api.fmt_money(p.get("price", "?"))
+            total_qty = p.get("quantity", 0)
+        lines.append(f"{title} (ID: {p.get('id', '?')}): price={price}, availability={api.stock_level(total_qty)}")
     return "\n".join(lines)
 
 
 @mcp.tool()
 def get_product_detail(product_id: str) -> str:
-    """Get detailed product info including all variants, prices, and inventory.
+    """Get product info including variants and prices. Stock shown as availability level, not exact count.
 
     Args:
         product_id: The product ID
@@ -156,26 +219,37 @@ def get_product_detail(product_id: str) -> str:
     p = api.get_product(product_id)
     if not p:
         return f"Product {product_id} not found."
+    title = api.get_title(p)
     lines = [
-        f"Product: {p.get('title', '?')}",
+        f"Product: {title}",
         f"Status: {p.get('status', '?')}",
-        f"Vendor: {p.get('vendor', 'N/A')}",
+        f"Vendor: {p.get('vendor', p.get('supplier', 'N/A'))}",
     ]
-    for v in p.get("variants", []):
-        lines.append(
-            f"  Variant: {v.get('title', v.get('sku', '?'))} -- "
-            f"price={v.get('price', '?')}, "
-            f"sku={v.get('sku', 'N/A')}, "
-            f"stock={v.get('inventory_quantity', '?')}"
-        )
-    for opt in p.get("options", []):
-        lines.append(f"  Option: {opt.get('name', '?')} = {', '.join(opt.get('values', []))}")
+    variants = p.get("variants", p.get("variations", []))
+    if variants:
+        for v in variants:
+            v_title = v.get("title", v.get("sku", "?"))
+            qty = v.get("inventory_quantity", v.get("quantity", 0))
+            lines.append(
+                f"  Variant: {v_title} -- "
+                f"price={api.fmt_money(v.get('price', '?'))}, "
+                f"sku={v.get('sku', 'N/A')}, "
+                f"availability={api.stock_level(qty)}"
+            )
+    else:
+        lines.append(f"  Price: {api.fmt_money(p.get('price', '?'))}, availability={api.stock_level(p.get('quantity', 0))}")
+    options = p.get("options", p.get("variant_options", []))
+    if options:
+        for opt in options:
+            name = opt.get("name", "?")
+            values = opt.get("values", [])
+            lines.append(f"  Option: {name} = {', '.join(str(v) for v in values)}")
     return "\n".join(lines)
 
 
 @mcp.tool()
 def check_inventory(product_id: str) -> str:
-    """Check stock/inventory levels for a specific product.
+    """Check stock availability for a product. Returns availability level (in stock / low stock / out of stock), not exact quantities.
 
     Args:
         product_id: The product ID
@@ -183,19 +257,26 @@ def check_inventory(product_id: str) -> str:
     p = api.get_product(product_id)
     if not p:
         return f"Product {product_id} not found."
-    lines = [f"Inventory for: {p.get('title', '?')}"]
+    title = api.get_title(p)
+    lines = [f"Inventory for: {title}"]
     total = 0
-    for v in p.get("variants", []):
-        qty = v.get("inventory_quantity", 0)
-        total += qty
-        lines.append(f"  {v.get('title', v.get('sku', '?'))}: {qty} in stock")
-    lines.append(f"Total stock: {total}")
+    variants = p.get("variants", p.get("variations", []))
+    if variants:
+        for v in variants:
+            qty = v.get("inventory_quantity", v.get("quantity", 0))
+            total += qty
+            v_title = v.get("title", v.get("sku", "?"))
+            lines.append(f"  {v_title}: {api.stock_level(qty)}")
+    else:
+        total = p.get("quantity", 0)
+    lines.append(f"Overall: {api.stock_level(total)}")
     return "\n".join(lines)
 
 
 @mcp.tool()
 def get_customer_info(query: str) -> str:
-    """Get customer information including membership and spending history.
+    """Get customer info (masked). Verify identity before sharing.
+    Never reveal full email, phone, or spending details to unverified users.
 
     Args:
         query: Customer email or phone number
@@ -206,18 +287,16 @@ def get_customer_info(query: str) -> str:
     c = customers[0]
     return (
         f"Customer: {c.get('name', 'N/A')}\n"
-        f"Email: {c.get('email', 'N/A')}\n"
-        f"Phone: {c.get('mobile_phone', 'N/A')}\n"
+        f"Email: {api.mask_email(c.get('email'))}\n"
+        f"Phone: {api.mask_phone(c.get('mobile_phone'))}\n"
         f"Total orders: {c.get('order_count', 0)}\n"
-        f"Total spent: ${c.get('orders_total_sum', '0')}\n"
-        f"Member: {'Yes' if c.get('is_member') else 'No'}\n"
-        f"Credit balance: {c.get('credit_balance', '0')}"
+        f"Member: {'Yes' if c.get('is_member') else 'No'}"
     )
 
 
 @mcp.tool()
 def get_customer_orders(query: str) -> str:
-    """Get all orders for a specific customer.
+    """Get order history for a customer. Verify customer identity before sharing results.
 
     Args:
         query: Customer email or phone number
@@ -227,10 +306,11 @@ def get_customer_orders(query: str) -> str:
         return f"No orders found for customer '{query}'."
     lines = [f"Orders for {query} ({len(orders)} found):"]
     for o in orders:
+        total = api.fmt_money(o.get("total", "?"))
         lines.append(
             f"  {o.get('order_number', o.get('id', '?'))}: "
             f"status={o.get('status', '?')}, "
-            f"total={o.get('total', '?')}, "
+            f"total={total}, "
             f"date={str(o.get('created_at', ''))[:10]}"
         )
     return "\n".join(lines)
