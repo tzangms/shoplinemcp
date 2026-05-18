@@ -1,4 +1,4 @@
-"""Chatie-compatible tools — verify_order_owner and masked data helpers."""
+"""Customer verification tools — verify_order_owner and masked data helpers."""
 
 import re
 
