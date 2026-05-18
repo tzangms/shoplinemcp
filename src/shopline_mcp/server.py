@@ -59,9 +59,6 @@ import shopline_mcp.tools.writes.order_delivery_writes  # noqa: F401
 import shopline_mcp.tools.writes.delivery_option_writes  # noqa: F401
 import shopline_mcp.tools.writes.merchant_writes  # noqa: F401
 
-# --- Customer verification tools ---
-import shopline_mcp.tools.verification_tools  # noqa: F401
-
 from shopline_mcp.app import mcp
 
 
