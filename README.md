@@ -2,20 +2,6 @@
 
 MCP server for the [Shopline](https://www.shopline.com/) Open API. Exposes 140+ tools for querying and managing orders, products, customers, promotions, analytics, and store settings from your Shopline store via Claude.
 
-## Installation
-
-Clone the repo and install in a virtualenv:
-
-```bash
-git clone https://github.com/tzangms/shoplinemcp.git
-cd shoplinemcp
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```
-
-This installs the `shopline-mcp` command into your virtualenv.
-
 ## Get a Shopline API token
 
 In your Shopline admin panel:
@@ -26,15 +12,18 @@ Copy the token — you'll need it for the config below.
 
 ## Setup
 
-### Claude Desktop
+### Claude Desktop (recommended: uvx)
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) and add an entry to `mcpServers`. You must use the **absolute path** to the `shopline-mcp` binary inside your virtualenv (Claude Desktop does not activate venvs):
+[Install uv](https://docs.astral.sh/uv/getting-started/installation/) first (`brew install uv` on macOS).
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) and add:
 
 ```json
 {
   "mcpServers": {
     "shopline": {
-      "command": "/absolute/path/to/your/.venv/bin/shopline-mcp",
+      "command": "uvx",
+      "args": ["shopline-mcp"],
       "env": {
         "SHOPLINE_API_TOKEN": "your_token_here"
       }
@@ -43,17 +32,25 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) a
 }
 ```
 
-To find the absolute path, run `which shopline-mcp` while the venv is activated.
-
-Quit Claude Desktop completely (Cmd+Q) and reopen it. The Shopline tools should now be available.
+`uvx` downloads and runs the package on demand — no manual install needed. Quit Claude Desktop completely (Cmd+Q) and reopen.
 
 ### Claude Code
 
 ```bash
 claude mcp add --transport stdio shopline \
   -e SHOPLINE_API_TOKEN=your_token \
-  -- /absolute/path/to/your/.venv/bin/shopline-mcp
+  -- uvx shopline-mcp
 ```
+
+### Alternative: pip install
+
+If you prefer a permanent install:
+
+```bash
+pip install shopline-mcp
+```
+
+Then use the absolute path to the installed binary (`which shopline-mcp`) as the `command` in your Claude Desktop config.
 
 ## Tools
 
@@ -75,17 +72,26 @@ This server uses the Shopline Open API at `https://open.shopline.io/v1`. It work
 
 ## Troubleshooting
 
-**Claude Desktop doesn't show the tools** — verify the `command` path is absolute and the binary exists (`ls -l /path/to/.venv/bin/shopline-mcp`). Check Claude Desktop logs at `~/Library/Logs/Claude/`.
+**Claude Desktop doesn't show the tools** — check that `uvx` is in PATH (`which uvx`). Claude Desktop inherits PATH from your shell on launch; if you installed uv after launching Claude Desktop, restart it. Check logs at `~/Library/Logs/Claude/`.
 
-**Server runs but tool calls fail with auth errors** — confirm `SHOPLINE_API_TOKEN` is set in the `env` block of the config (not just in your shell), and that the token has the required scopes in Shopline admin.
+**Tool calls fail with auth errors** — confirm `SHOPLINE_API_TOKEN` is set in the `env` block of the config (not just in your shell), and that the token has the required scopes in Shopline admin.
 
 **Test the server manually**:
 
 ```bash
-SHOPLINE_API_TOKEN=your_token /path/to/.venv/bin/shopline-mcp
+SHOPLINE_API_TOKEN=your_token uvx shopline-mcp
 ```
 
 It will wait on stdin (correct — MCP uses stdio). Ctrl+C to exit.
+
+## Development
+
+```bash
+git clone https://github.com/tzangms/shoplinemcp.git
+cd shoplinemcp
+uv venv && source .venv/bin/activate
+uv pip install -e .
+```
 
 ## License
 
