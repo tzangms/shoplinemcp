@@ -70,7 +70,8 @@ def get_category_detail(
     - GET /v1/categories/{category_id}
 
     【回傳結構】
-    dict 包含 id, name, parent_id, description, status, priority, image_url。
+    dict 包含 id, name, parent_id, seo_description, status, priority, image_url。
+    註：Shopline 分類無一般說明欄位，seo_description 來自 seo_description_translations。
     """
     data = api_get("category_detail", path_params={"category_id": category_id})
     cat = data.get("item", data) if isinstance(data, dict) else data
@@ -79,7 +80,8 @@ def get_category_detail(
         "id": cat.get("id"),
         "name": get_translation(cat.get("name_translations") or cat.get("title_translations")) or cat.get("name"),
         "parent_id": cat.get("parent_id"),
-        "description": get_translation(cat.get("seo_description_translations") or cat.get("description_translations")),
+        # Shopline 分類沒有一般說明欄位，只有 SEO 說明，故據實命名為 seo_description
+        "seo_description": get_translation(cat.get("seo_description_translations")),
         "status": cat.get("status"),
         "priority": cat.get("priority"),
         "image_url": (extract_image_urls(cat) or [None])[0],

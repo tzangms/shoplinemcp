@@ -72,8 +72,9 @@ def get_delivery_option_detail(
     - GET /v1/delivery_options/{delivery_option_id}
 
     【回傳結構】
-    dict 含配送方式詳細欄位：id, name, delivery_type,
-    enabled, price, weight_limit, regions, created_at 等。
+    dict 含 id, name, description, delivery_type, status, fee_type,
+    rates（運費級距）, region_type, supported_countries, support_cod 等，
+    欄位與 list_delivery_options 一致。
     """
     data = api_get(
         "delivery_option_detail",
@@ -81,17 +82,29 @@ def get_delivery_option_detail(
     )
     d = data.get("delivery_option", data) if isinstance(data, dict) else {}
 
+    rates = []
+    for r in (d.get("delivery_rates") or []):
+        rates.append({
+            "name": get_translation(r.get("name_translations")) or r.get("name"),
+            "fee": money_to_float(r.get("fee") or r.get("price")),
+        })
+
     return {
         "id": d.get("id"),
         "name": get_translation(d.get("name_translations")) or d.get("name"),
+        "description": get_translation(d.get("description_translations")),
+        "delivery_time_description": get_translation(d.get("delivery_time_description_translations")),
         "delivery_type": d.get("delivery_type"),
-        "enabled": d.get("enabled"),
-        "position": d.get("position"),
-        "price": d.get("price"),
-        "weight_limit": d.get("weight_limit"),
-        "regions": d.get("regions", []),
-        "created_at": d.get("created_at"),
-        "updated_at": d.get("updated_at"),
+        "status": d.get("status"),
+        "fee_type": d.get("fee_type"),
+        "rates": rates,
+        "region_type": d.get("region_type"),
+        "supported_countries": d.get("supported_countries"),
+        "requires_customer_address": d.get("requires_customer_address"),
+        "support_cod": d.get("support_cod"),
+        "support_non_cod": d.get("support_non_cod"),
+        "is_return": d.get("is_return"),
+        "excluded_payment_ids": d.get("excluded_payment_ids", []),
     }
 
 
