@@ -68,7 +68,9 @@ def list_channels(
 
 
 @mcp.tool()
-def get_channel_detail(channel_id: str) -> dict:
+def get_channel_detail(
+    channel_id: str = Field(description="銷售渠道 ID（由 list_channels 回傳的 id 欄位取得）"),
+) -> dict:
     """取得指定銷售渠道的詳細資訊。
 
     【用途】

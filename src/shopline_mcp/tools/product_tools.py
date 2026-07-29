@@ -90,17 +90,37 @@ def get_product_list(
     barcode: Optional[str] = Field(default=None, description="以條碼(gtin)精準查詢"),
     category_id: Optional[str] = Field(default=None, description="依分類篩選，可用逗號分隔多個分類 ID"),
     status: Optional[str] = Field(default=None, description="商品狀態篩選：active / draft / removed / hidden"),
-    brand: Optional[str] = Field(default=None, description="品牌篩選（Shopline 無此查詢參數，於結果集內比對）"),
+    brand: Optional[str] = Field(
+        default=None,
+        description="品牌篩選。Shopline 無此查詢參數，需掃描商品後在本地比對，"
+                    "故最多只掃描前 10,000 筆商品；超過的部分請改用 category_id 或 keyword 縮小範圍",
+    ),
     max_results: int = Field(default=50, description="最多回傳筆數。設大即可列出全部，不再有 500 筆上限"),
 ) -> dict:
     """搜尋 / 列出商品，含 SKU 變體、價格、品牌、庫存數量與商品圖 URL。
 
+    注意：使用 brand 篩選時結果可能不完整（見下方限制），
+    回傳的 scan_incomplete 為 true 時不可當成完整清單。
+
     查詢一律交由 Shopline 後端比對（不做本地模糊比對），因此含 & 的名稱、
     特殊排版的品名（如「8入-粗版」）都能正確命中，且結果不受筆數上限截斷。
+
+    【brand 參數的限制】
+    Shopline API 沒有品牌查詢參數，只能先取回商品再於本地比對，
+    最多掃描 10,000 筆（MAX_SCAN_PAGES）。商品數超過此值時無法保證找齊，
+    此時回傳的 scan_incomplete 會是 true —— 出現時請勿把結果當成完整清單，
+    改搭配 category_id / keyword 縮小範圍後再查。
+    其餘查詢條件（keyword / sku / barcode / category_id / status）
+    皆由 Shopline 後端處理，不受此限制。
 
     【呼叫的 Shopline API】
     - GET /v1/products/search（有任何查詢條件時）
     - GET /v1/products（完全無條件的列全部）
+
+    【回傳結構】
+    dict 含 total_found, returned, truncated, scan_incomplete, query, products[]。
+    - truncated: 符合條件者多於本次回傳筆數（可調大 max_results 取得更多）
+    - scan_incomplete: 僅品牌篩選時可能為 true，代表未掃完全店，結果可能遺漏
     """
     keyword = resolve_field(keyword)
     sku = resolve_field(sku)
@@ -131,13 +151,23 @@ def get_product_list(
         endpoint, params=params or None, max_pages=scan_pages
     )
 
+    scan_incomplete = False
+    scanned = len(products)
+    store_total = total_count
+
     if brand:
-        # 本地篩選後 API 的 total_count 不再代表結果數，改用實際比對筆數
+        # 品牌只能本地比對，因此得先確認是否真的掃完了：
+        # API 回報的總數大於實際取回筆數，就代表有商品沒被看到，
+        # 這時的 total_found 會偏低，必須據實回報而非靜默截斷。
+        if store_total is not None and store_total > scanned:
+            scan_incomplete = True
+
         brand_lower = brand.lower()
         products = [
             p for p in products
             if brand_lower in (p.get("brand") or "").lower()
         ]
+        # 本地篩選後 API 的 total_count 不再代表結果數，改用實際比對筆數
         total_count = len(products)
 
     results = [_summarize_product(p) for p in products[:max_results]]
@@ -146,13 +176,21 @@ def get_product_list(
     # 只比對抓回筆數會在剛好抓滿一頁時誤報未截斷。
     total_found = total_count if total_count is not None else len(products)
 
-    return {
+    result = {
         "total_found": total_found,
         "returned": len(results),
         "truncated": total_found > len(results),
+        "scan_incomplete": scan_incomplete,
         "query": params or None,
         "products": results
     }
+    if scan_incomplete:
+        result["scanned_products"] = scanned
+        result["warning"] = (
+            f"品牌篩選僅掃描了 {scanned} / {store_total} 筆商品，結果可能遺漏。"
+            "請改用 category_id 或 keyword 縮小範圍後再查。"
+        )
+    return result
 
 
 # ============================================================
@@ -160,9 +198,12 @@ def get_product_list(
 # ============================================================
 @mcp.tool()
 def get_product_variants(
-    product_id: str = Field(description="商品 ID"),
+    product_id: str = Field(description="商品 ID（由 get_product_list / get_product_by_sku 回傳的 id 欄位取得）"),
 ) -> dict:
     """取得特定商品的所有 SKU 變體明細，含尺寸×顏色的庫存矩陣與商品圖 URL。
+
+    使用時機：已經知道 product_id，且需要完整的變體矩陣（每個顏色×尺寸的庫存）。
+    只有 SKU 或商品名稱時請先用 get_product_by_sku / get_product_list 取得 id。
 
     【呼叫的 Shopline API】
     - GET /v1/products/{product_id}
@@ -209,8 +250,9 @@ def get_product_by_sku(
 ) -> dict:
     """以 SKU 精準查詢單一商品的貨況（庫存、價格）與商品圖 URL。
 
-    查特定貨品時最可靠的入口：由 Shopline 後端以 SKU 精準比對，
-    不做本地模糊搜尋，因此不會因品名排版、& 符號或筆數上限而漏抓。
+    等同於 get_product_list(sku=...)，但額外把該 SKU 對應的變體明細
+    （matched_variants）挑出來，查單一貨品時讀起來更直接。
+    需要一次查多個條件或列清單時請用 get_product_list。
 
     【呼叫的 Shopline API】
     - GET /v1/products/search?sku={sku}
@@ -336,7 +378,15 @@ def get_inventory_overview(
 def get_low_stock_alerts(
     threshold: int = Field(default=5, description="庫存低於此值即警示"),
 ) -> dict:
-    """取得低庫存或缺貨的 SKU 清單，可自訂庫存門檻值。"""
+    """取得低庫存或缺貨的 SKU 清單（變體層級），可自訂庫存門檻值。
+
+    掃描全店商品，列出每個 quantity <= threshold 的變體，依庫存由少到多排序。
+    要看整體庫存統計請用 get_inventory_overview；要看各倉庫分佈請用 get_stock_by_warehouse。
+
+    【回傳結構】
+    dict 含 threshold, total_alerts, out_of_stock（缺貨數）, low_stock（低庫存數）, alerts[]。
+    每筆 alert 含 product_title、sku、color、size、quantity、status（缺貨/低庫存）、brand。
+    """
     threshold = resolve_field(threshold)
     products = fetch_all_pages("products", max_pages=MAX_SCAN_PAGES)
 

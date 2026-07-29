@@ -2,6 +2,8 @@
 配送方式 Tools — 商店配送選項與時段查詢
 """
 
+from pydantic import Field
+
 from shopline_mcp.app import mcp
 from shopline_mcp.tools.base_tool import api_get, get_translation, money_to_float
 
@@ -57,7 +59,9 @@ def list_delivery_options() -> dict:
 
 
 @mcp.tool()
-def get_delivery_option_detail(delivery_option_id: str) -> dict:
+def get_delivery_option_detail(
+    delivery_option_id: str = Field(description="物流方式 ID（由 list_delivery_options 回傳的 id 欄位取得）"),
+) -> dict:
     """取得指定配送方式的詳細資訊。
 
     【用途】
@@ -92,7 +96,9 @@ def get_delivery_option_detail(delivery_option_id: str) -> dict:
 
 
 @mcp.tool()
-def get_delivery_time_slots(delivery_option_id: str) -> dict:
+def get_delivery_time_slots(
+    delivery_option_id: str = Field(description="物流方式 ID（由 list_delivery_options 回傳的 id 欄位取得）"),
+) -> dict:
     """取得指定配送方式的可用時段清單。
 
     【用途】
