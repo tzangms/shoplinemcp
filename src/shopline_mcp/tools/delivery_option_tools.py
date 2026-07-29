@@ -3,7 +3,7 @@
 """
 
 from shopline_mcp.app import mcp
-from shopline_mcp.tools.base_tool import api_get, get_translation
+from shopline_mcp.tools.base_tool import api_get, get_translation, money_to_float
 
 
 @mcp.tool()
@@ -19,22 +19,35 @@ def list_delivery_options() -> dict:
 
     【回傳結構】
     dict 含 total, delivery_options[]。
-    每個 delivery_option 包含 id, name, delivery_type,
-    enabled, position, price, created_at 等。
+    每個 delivery_option 包含 id, name, delivery_type, status,
+    fee_type, rates（運費級距）, supported_countries, support_cod 等。
     """
     data = api_get("delivery_options")
     items = data.get("items", []) if isinstance(data, dict) else []
 
     results = []
     for d in items:
+        # 運費級距：delivery_rates 內為 Shopline 金額物件
+        rates = []
+        for r in (d.get("delivery_rates") or []):
+            rates.append({
+                "name": get_translation(r.get("name_translations")) or r.get("name"),
+                "fee": money_to_float(r.get("fee") or r.get("price")),
+            })
+
         results.append({
             "id": d.get("id"),
             "name": get_translation(d.get("name_translations")) or d.get("name"),
+            "description": get_translation(d.get("description_translations")),
             "delivery_type": d.get("delivery_type"),
-            "enabled": d.get("enabled"),
-            "position": d.get("position"),
-            "price": d.get("price"),
-            "created_at": d.get("created_at"),
+            "status": d.get("status"),
+            "fee_type": d.get("fee_type"),
+            "rates": rates,
+            "region_type": d.get("region_type"),
+            "supported_countries": d.get("supported_countries"),
+            "requires_customer_address": d.get("requires_customer_address"),
+            "support_cod": d.get("support_cod"),
+            "is_return": d.get("is_return"),
         })
 
     return {

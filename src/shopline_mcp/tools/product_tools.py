@@ -7,74 +7,150 @@ from pydantic import Field
 
 from shopline_mcp.app import mcp
 from shopline_mcp.tools.base_tool import (
-    api_get, fetch_all_pages, money_to_float, get_translation, resolve_field
+    api_get, fetch_all_pages, fetch_pages_with_total, money_to_float,
+    get_translation, resolve_field, extract_image_urls, MAX_SCAN_PAGES, pages_for
 )
 from collections import defaultdict
 
 
+def _variant_fields(v):
+    """取出變體的顏色/尺寸。
+
+    優先用 feed_variations（有明確的 color / size 具名欄位），
+    沒有時才退回 fields_translations 的位置陣列（第 0 個當顏色、第 1 個當尺寸）。
+    """
+    fields = v.get("fields_translations", {}).get("zh-hant", [])
+    feed = v.get("feed_variations") or {}
+
+    color = (get_translation(feed["color"]) if "color" in feed
+             else (fields[0] if len(fields) > 0 else ""))
+    size = (get_translation(feed["size"]) if "size" in feed
+            else (fields[1] if len(fields) > 1 else ""))
+    return color, size
+
+
+def _summarize_variant(v):
+    """將 Shopline variation 物件整理成統一的回傳結構（含變體圖）"""
+    color, size = _variant_fields(v)
+    images = extract_image_urls(v)
+
+    return {
+        "id": v.get("id"),
+        "sku": v.get("sku"),
+        "color": color,
+        "size": size,
+        "price": money_to_float(v.get("price")),
+        "price_sale": money_to_float(v.get("price_sale")),
+        "cost": money_to_float(v.get("cost")),
+        "quantity": v.get("quantity", 0) or 0,
+        "total_orderable_quantity": v.get("total_orderable_quantity", 0),
+        "image_url": images[0] if images else None,
+    }
+
+
+def _summarize_product(p):
+    """將 Shopline product 物件整理成統一的回傳結構（含圖片 URL）"""
+    variations = p.get("variations", [])
+    total_qty = sum(v.get("quantity", 0) or 0 for v in variations)
+    if not variations:
+        total_qty = p.get("quantity", 0) or 0
+
+    supplier = p.get("supplier") or {}
+    supplier_name = supplier.get("name", "") if isinstance(supplier, dict) else ""
+
+    images = extract_image_urls(p)
+
+    return {
+        "id": p.get("id"),
+        "title": get_translation(p.get("title_translations")),
+        "sku": p.get("sku"),
+        "barcode": p.get("barcode") or p.get("gtin"),
+        "brand": p.get("brand"),
+        "supplier": supplier_name,
+        "price": money_to_float(p.get("price")),
+        "price_sale": money_to_float(p.get("price_sale")),
+        "cost": money_to_float(p.get("cost")),
+        "quantity": total_qty,
+        "category_ids": p.get("category_ids", []),
+        "status": p.get("status"),
+        "variants_count": len(variations),
+        "tags": p.get("tags", []),
+        "image_url": images[0] if images else None,
+        "images": images,
+    }
+
+
 # ============================================================
-# Tool 1: get_product_list — 商品列表
+# Tool 1: get_product_list — 商品列表 / 商品搜尋
 # ============================================================
 @mcp.tool()
 def get_product_list(
-    keyword: Optional[str] = Field(default=None, description="商品名稱關鍵字搜尋"),
-    brand: Optional[str] = Field(default=None, description="品牌篩選"),
-    max_results: int = Field(default=50, description="最多回傳筆數"),
+    keyword: Optional[str] = Field(default=None, description="關鍵字搜尋，由 Shopline 後端比對商品名稱 / SKU / 條碼"),
+    sku: Optional[str] = Field(default=None, description="以 SKU 精準查詢（完全相符）。查特定貨品時優先用這個，不會漏抓"),
+    barcode: Optional[str] = Field(default=None, description="以條碼(gtin)精準查詢"),
+    category_id: Optional[str] = Field(default=None, description="依分類篩選，可用逗號分隔多個分類 ID"),
+    status: Optional[str] = Field(default=None, description="商品狀態篩選：active / draft / removed / hidden"),
+    brand: Optional[str] = Field(default=None, description="品牌篩選（Shopline 無此查詢參數，於結果集內比對）"),
+    max_results: int = Field(default=50, description="最多回傳筆數。設大即可列出全部，不再有 500 筆上限"),
 ) -> dict:
-    """取得商品列表，含 SKU 變體、價格、品牌、庫存數量等資訊。
+    """搜尋 / 列出商品，含 SKU 變體、價格、品牌、庫存數量與商品圖 URL。
+
+    查詢一律交由 Shopline 後端比對（不做本地模糊比對），因此含 & 的名稱、
+    特殊排版的品名（如「8入-粗版」）都能正確命中，且結果不受筆數上限截斷。
 
     【呼叫的 Shopline API】
-    - GET /v1/products
-    - GET /v1/products/search
+    - GET /v1/products/search（有任何查詢條件時）
+    - GET /v1/products（完全無條件的列全部）
     """
     keyword = resolve_field(keyword)
+    sku = resolve_field(sku)
+    barcode = resolve_field(barcode)
+    category_id = resolve_field(category_id)
+    status = resolve_field(status)
     brand = resolve_field(brand)
-    products = fetch_all_pages("products", max_pages=10)
+    max_results = resolve_field(max_results)
 
+    # 組 server-side 查詢參數，交給 Shopline 後端比對
+    params = {}
     if keyword:
-        keyword_lower = keyword.lower()
-        products = [
-            p for p in products
-            if keyword_lower in get_translation(p.get("title_translations")).lower()
-            or keyword_lower in (p.get("sku") or "").lower()
-        ]
+        params["query"] = keyword
+    if sku:
+        params["sku"] = sku
+    if barcode:
+        params["barcode"] = barcode
+    if category_id:
+        params["category_id"] = category_id
+    if status:
+        params["status"] = status
+
+    # brand 需在結果集內比對，故不能只抓 max_results 筆就停
+    scan_pages = MAX_SCAN_PAGES if brand else pages_for(max_results)
+
+    endpoint = "products_search" if params else "products"
+    products, total_count = fetch_pages_with_total(
+        endpoint, params=params or None, max_pages=scan_pages
+    )
 
     if brand:
+        # 本地篩選後 API 的 total_count 不再代表結果數，改用實際比對筆數
         brand_lower = brand.lower()
         products = [
             p for p in products
             if brand_lower in (p.get("brand") or "").lower()
         ]
+        total_count = len(products)
 
-    results = []
-    for p in products[:max_results]:
-        variations = p.get("variations", [])
-        total_qty = sum(v.get("quantity", 0) or 0 for v in variations)
-        if not variations:
-            total_qty = p.get("quantity", 0) or 0
+    results = [_summarize_product(p) for p in products[:max_results]]
 
-        supplier = p.get("supplier") or {}
-        supplier_name = supplier.get("name", "") if isinstance(supplier, dict) else ""
-
-        results.append({
-            "id": p.get("id"),
-            "title": get_translation(p.get("title_translations")),
-            "sku": p.get("sku"),
-            "brand": p.get("brand"),
-            "supplier": supplier_name,
-            "price": money_to_float(p.get("price")),
-            "price_sale": money_to_float(p.get("price_sale")),
-            "cost": money_to_float(p.get("cost")),
-            "quantity": total_qty,
-            "category_ids": p.get("category_ids", []),
-            "status": p.get("status"),
-            "variants_count": len(variations),
-            "tags": p.get("tags", []),
-        })
+    # total_count 來自 API，才能反映「符合條件的全部筆數」；
+    # 只比對抓回筆數會在剛好抓滿一頁時誤報未截斷。
+    total_found = total_count if total_count is not None else len(products)
 
     return {
-        "total_found": len(products),
+        "total_found": total_found,
         "returned": len(results),
+        "truncated": total_found > len(results),
+        "query": params or None,
         "products": results
     }
 
@@ -86,51 +162,84 @@ def get_product_list(
 def get_product_variants(
     product_id: str = Field(description="商品 ID"),
 ) -> dict:
-    """取得特定商品的所有 SKU 變體明細，含尺寸×顏色的庫存矩陣。
+    """取得特定商品的所有 SKU 變體明細，含尺寸×顏色的庫存矩陣與商品圖 URL。
 
     【呼叫的 Shopline API】
     - GET /v1/products/{product_id}
     """
-    # 從列表中找到該商品（或直接用 ID 查詢）
-    products = fetch_all_pages("products", max_pages=10)
-    product = None
-    for p in products:
-        if p.get("id") == product_id:
-            product = p
-            break
+    product_id = resolve_field(product_id)
 
-    if not product:
+    # 直接以 ID 精準查詢，不再撈全表再比對（原作法受筆數上限影響且緩慢）
+    try:
+        product = api_get("product_detail", path_params={"product_id": product_id})
+    except Exception as e:
+        return {"error": f"Product {product_id} not found: {e}"}
+
+    if not product or not product.get("id"):
         return {"error": f"Product {product_id} not found"}
 
     title = get_translation(product.get("title_translations"))
     field_titles = product.get("field_titles", [])
     dim_names = [get_translation(ft.get("name_translations")) for ft in field_titles]
 
-    variants = []
-    for v in product.get("variations", []):
-        fields = v.get("fields_translations", {}).get("zh-hant", [])
-        feed = v.get("feed_variations", {})
+    variants = [_summarize_variant(v) for v in product.get("variations", [])]
 
-        variants.append({
-            "id": v.get("id"),
-            "sku": v.get("sku"),
-            "color": get_translation(feed.get("color")) if "color" in feed else (fields[0] if len(fields) > 0 else ""),
-            "size": get_translation(feed.get("size")) if "size" in feed else (fields[1] if len(fields) > 1 else ""),
-            "price": money_to_float(v.get("price")),
-            "price_sale": money_to_float(v.get("price_sale")),
-            "cost": money_to_float(v.get("cost")),
-            "quantity": v.get("quantity", 0) or 0,
-            "total_orderable_quantity": v.get("total_orderable_quantity", 0),
-        })
+    product_images = extract_image_urls(product)
 
     return {
         "product_id": product_id,
         "title": title,
         "brand": product.get("brand"),
+        "sku": product.get("sku"),
         "dimensions": dim_names,
         "variants_count": len(variants),
         "total_quantity": sum(v["quantity"] for v in variants),
+        "image_url": product_images[0] if product_images else None,
+        "images": product_images,
         "variants": variants,
+    }
+
+
+# ============================================================
+# Tool 2b: get_product_by_sku — 以 SKU 精準查貨況與商品圖
+# ============================================================
+@mcp.tool()
+def get_product_by_sku(
+    sku: str = Field(description="商品或變體的 SKU（完全相符）"),
+) -> dict:
+    """以 SKU 精準查詢單一商品的貨況（庫存、價格）與商品圖 URL。
+
+    查特定貨品時最可靠的入口：由 Shopline 後端以 SKU 精準比對，
+    不做本地模糊搜尋，因此不會因品名排版、& 符號或筆數上限而漏抓。
+
+    【呼叫的 Shopline API】
+    - GET /v1/products/search?sku={sku}
+    """
+    sku = resolve_field(sku)
+    if not sku:
+        return {"error": "sku is required"}
+
+    products = fetch_all_pages("products_search", params={"sku": sku}, max_pages=5)
+
+    if not products:
+        return {"found": False, "sku": sku, "products": []}
+
+    results = []
+    for p in products:
+        summary = _summarize_product(p)
+        # 帶出該 SKU 對應的變體明細，方便直接看到貨況
+        target = sku.strip().lower()
+        summary["matched_variants"] = [
+            _summarize_variant(v) for v in p.get("variations", [])
+            if (v.get("sku") or "").strip().lower() == target
+        ]
+        results.append(summary)
+
+    return {
+        "found": True,
+        "sku": sku,
+        "total_found": len(results),
+        "products": results,
     }
 
 
@@ -143,7 +252,7 @@ def get_inventory_overview(
 ) -> dict:
     """取得全商品庫存總覽：總庫存數量、庫存品項數、缺貨品項數等。從商品 variations 的 quantity 欄位計算。"""
     brand = resolve_field(brand)
-    products = fetch_all_pages("products", max_pages=10)
+    products = fetch_all_pages("products", max_pages=MAX_SCAN_PAGES)
 
     if brand:
         brand_lower = brand.lower()
@@ -228,7 +337,8 @@ def get_low_stock_alerts(
     threshold: int = Field(default=5, description="庫存低於此值即警示"),
 ) -> dict:
     """取得低庫存或缺貨的 SKU 清單，可自訂庫存門檻值。"""
-    products = fetch_all_pages("products", max_pages=10)
+    threshold = resolve_field(threshold)
+    products = fetch_all_pages("products", max_pages=MAX_SCAN_PAGES)
 
     alerts = []
     for p in products:
@@ -236,12 +346,12 @@ def get_low_stock_alerts(
         for v in p.get("variations", []):
             qty = v.get("quantity", 0) or 0
             if qty <= threshold:
-                fields = v.get("fields_translations", {}).get("zh-hant", [])
+                color, size = _variant_fields(v)
                 alerts.append({
                     "product_title": title,
                     "sku": v.get("sku"),
-                    "color": fields[0] if len(fields) > 0 else "",
-                    "size": fields[1] if len(fields) > 1 else "",
+                    "color": color,
+                    "size": size,
                     "quantity": qty,
                     "status": "缺貨" if qty == 0 else "低庫存",
                     "brand": p.get("brand"),
@@ -287,22 +397,61 @@ def get_warehouses() -> dict:
 def get_stock_by_warehouse(
     product_id: Optional[str] = Field(default=None, description="商品 ID（不填則查詢全部商品，但較慢）"),
     warehouse_id: Optional[str] = Field(default=None, description="倉庫 ID 篩選（僅看特定倉庫）"),
+    sku: Optional[str] = Field(default=None, description="以 SKU 精準定位商品後再查倉庫庫存（建議，快且不會漏）"),
+    max_products: int = Field(default=50, description="未指定商品時最多掃描幾個商品（每個商品需一次 API 呼叫，故較慢）"),
 ) -> dict:
-    """取得商品在各倉庫/門市的庫存分佈矩陣。可查詢單一商品或全部商品的各倉庫庫存。"""
+    """取得商品在各倉庫/門市的庫存分佈矩陣。可查詢單一商品或全部商品的各倉庫庫存。
+
+    查特定貨品時請帶 sku 或 product_id；不帶條件的全掃描因為每個商品都要一次
+    API 呼叫，會受 max_products 限制（回傳的 scan_truncated 會標示是否被截斷）。
+    """
+    product_id = resolve_field(product_id)
+    warehouse_id = resolve_field(warehouse_id)
+    sku = resolve_field(sku)
+    max_products = resolve_field(max_products)
+
     # 取得倉庫名稱對照
     wh_data = api_get("warehouses", params={"per_page": 50})
     wh_map = {w["id"]: w.get("name", w["id"]) for w in wh_data.get("items", [])}
 
-    if product_id:
-        # 單一商品
-        data = api_get("product_stocks", path_params={"product_id": product_id})
-        products_stocks = [data]
+    scan_truncated = False
+
+    # 帶 sku 時先用 server-side 精準查詢定位商品 ID
+    if not product_id and sku:
+        matched = fetch_all_pages("products_search", params={"sku": sku}, max_pages=5)
+        if not matched:
+            return {"error": f"找不到 SKU 為 {sku} 的商品", "products_queried": 0}
+        target_ids = [p["id"] for p in matched if p.get("id")]
+        if not target_ids:
+            # 有比對到商品卻拿不到 ID：明確回報，不可靜默退回全店掃描
+            return {"error": f"SKU {sku} 對應的商品缺少 ID，無法查詢庫存",
+                    "products_queried": 0}
+    elif product_id:
+        target_ids = [product_id]
     else:
-        # 全部商品（分頁取得商品列表，逐一查庫存）
-        products = fetch_all_pages("products", max_pages=10)
+        target_ids = None
+
+    if target_ids is not None:
+        products_stocks = []
+        for pid in target_ids:
+            try:
+                products_stocks.append(
+                    api_get("product_stocks", path_params={"product_id": pid})
+                )
+            except Exception:
+                continue
+    else:
+        # 全部商品（分頁取得商品列表，逐一查庫存）。
+        # 每個商品都要一次額外 API 呼叫，所以只抓得到 max_products 所需的頁數，
+        # 再用第 1 頁的 total_count 判斷是否被截斷，而不是白抓整個目錄。
+        first_page = api_get("products", params={"per_page": 1, "page": 1})
+        total_count = (first_page.get("pagination") or {}).get("total_count") or 0
+        scan_truncated = total_count > max_products
+
+        products = fetch_all_pages("products", max_pages=pages_for(max_products))
         products_stocks = []
         import time as _time
-        for p in products[:50]:  # 限制前 50 個以避免過慢
+        for p in products[:max_products]:
             try:
                 stock = api_get("product_stocks", path_params={"product_id": p["id"]})
                 products_stocks.append(stock)
@@ -319,16 +468,14 @@ def get_stock_by_warehouse(
         pid = ps.get("id", "")
 
         for v in ps.get("variations", []):
-            fields = v.get("fields_translations", {}).get("zh-hant", [])
-            sku = v.get("sku", "")
-            color = fields[0] if len(fields) > 0 else ""
-            size = fields[1] if len(fields) > 1 else ""
+            variant_sku = v.get("sku", "")
+            color, size = _variant_fields(v)
 
             stocks = v.get("stocks", [])
             variant_detail = {
                 "product_title": title,
                 "product_id": pid,
-                "sku": sku,
+                "sku": variant_sku,
                 "color": color,
                 "size": size,
                 "warehouses": {},
@@ -356,7 +503,9 @@ def get_stock_by_warehouse(
 
     return {
         "products_queried": len(products_stocks),
+        "scan_truncated": scan_truncated,
         "total_variants": len(product_details),
+        "details_truncated": len(product_details) > 100,
         "warehouse_summary": {k: v for k, v in sorted_warehouses},
         "details": product_details[:100],  # 限制回傳筆數
     }
@@ -372,25 +521,53 @@ def get_locked_inventory() -> dict:
     取得目前被鎖定（預留）的庫存商品清單，協助分析哪些 SKU 有待出貨的預留數量。
 
     【呼叫的 Shopline API】
-    - GET /v1/products/locked-inventory
+    - GET /v1/products（讀取 locked_inventory_count 欄位彙總）
+
+    註：Shopline 並無 /v1/products/locked-inventory 端點，該路徑會被路由成
+    /v1/products/{productId} 而回 422，故改由商品與變體的 locked_inventory_count 計算。
 
     【回傳結構】
     - total: 鎖定庫存的 SKU 總筆數
-    - items: 每筆含 product_title、sku、locked_quantity
+    - total_locked_quantity: 鎖定數量加總
+    - products_scanned: 實際掃描的商品數
+    - items: 每筆含 product_id、product_title、sku、color、size、locked_quantity
     """
-    data = api_get("products_locked_inventory")
-    raw_items = data.get("items", []) if isinstance(data, dict) else []
+    products = fetch_all_pages("products", max_pages=MAX_SCAN_PAGES)
 
     items = []
-    for item in raw_items:
-        items.append({
-            "product_title": get_translation(item.get("title_translations")),
-            "sku": item.get("sku"),
-            "locked_quantity": item.get("locked_quantity", 0),
-        })
+    for p in products:
+        title = get_translation(p.get("title_translations"))
+        variations = p.get("variations") or []
+
+        for v in variations:
+            locked = v.get("locked_inventory_count") or 0
+            if locked:
+                color, size = _variant_fields(v)
+                items.append({
+                    "product_id": p.get("id"),
+                    "product_title": title,
+                    "sku": v.get("sku"),
+                    "color": color,
+                    "size": size,
+                    "locked_quantity": locked,
+                })
+
+        if not variations:
+            locked = p.get("locked_inventory_count") or 0
+            if locked:
+                items.append({
+                    "product_id": p.get("id"),
+                    "product_title": title,
+                    "sku": p.get("sku"),
+                    "locked_quantity": locked,
+                })
+
+    items.sort(key=lambda x: -x["locked_quantity"])
 
     return {
         "total": len(items),
+        "total_locked_quantity": sum(i["locked_quantity"] for i in items),
+        "products_scanned": len(products),
         "items": items,
     }
 

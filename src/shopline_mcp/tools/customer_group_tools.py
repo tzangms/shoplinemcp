@@ -6,7 +6,9 @@ from typing import Optional
 from pydantic import Field
 
 from shopline_mcp.app import mcp
-from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, resolve_field
+from shopline_mcp.tools.base_tool import (
+    api_get, fetch_all_pages, resolve_field, pages_for
+)
 
 
 @mcp.tool()
@@ -21,8 +23,8 @@ def list_customer_groups(
     取得群組 ID 後進一步查詢群組成員。
 
     【呼叫的 Shopline API】
-    - GET /v1/customer-groups（無搜尋條件時）
-    - GET /v1/customer-groups/search（有搜尋條件時）
+    - GET /v1/customer_groups（無搜尋條件時）
+    - GET /v1/customer_groups/search（有搜尋條件時）
 
     【回傳結構】
     dict 含 total_found, returned, groups[]。
@@ -34,7 +36,7 @@ def list_customer_groups(
         data = api_get("customer_groups_search", params=params)
         groups = data.get("items", [])
     else:
-        groups = fetch_all_pages("customer_groups", max_pages=max(1, max_results // 50))
+        groups = fetch_all_pages("customer_groups", max_pages=pages_for(max_results))
 
     results = []
     for g in groups[:max_results]:
@@ -59,20 +61,26 @@ def get_customer_group_members(
 ) -> dict:
     """取得指定客戶群組中的所有客戶 ID 列表。
 
-    【用途】
-    查詢特定群組包含哪些客戶。回傳客戶 ID 列表，可搭配 get_customer_profile 取得個別客戶詳情。
+    【重要限制】
+    Shopline Open API v1 目前並未提供查詢群組成員的方式：
+    - /v1/customer_groups/{group_id}/customers 回 404（端點不存在）
+    - /v1/customers?customer_group_id=... 等篩選參數會被 API 忽略，
+      回傳的是「全店客戶」而非群組成員。
 
-    【呼叫的 Shopline API】
-    - GET /v1/customer-groups/{group_id}/customers
+    因此本 tool 一律回傳明確錯誤，而不是回傳會被誤認為群組成員的全店名單。
+    如需群組名單，請由 Shopline 後台匯出。
 
     【回傳結構】
-    dict 含 group_id, total_members, customer_ids[]。
+    dict 含 error, group_id, supported_alternative。
     """
-    data = api_get("customer_group_customers", path_params={"group_id": group_id})
-    customer_ids = data.get("items", data.get("customer_ids", []))
+    group_id = resolve_field(group_id)
 
     return {
+        "error": (
+            "Shopline Open API v1 不支援查詢客戶群組成員："
+            "群組成員端點不存在，且 customers API 的群組篩選參數無效（會回傳全店客戶）。"
+            "請改由 Shopline 後台匯出群組名單。"
+        ),
         "group_id": group_id,
-        "total_members": len(customer_ids),
-        "customer_ids": customer_ids,
+        "supported_alternative": "list_customer_groups 可取得群組清單與各群組的基本資訊",
     }

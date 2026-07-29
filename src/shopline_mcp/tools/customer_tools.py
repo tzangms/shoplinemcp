@@ -74,7 +74,7 @@ def get_customer_profile(
     【呼叫的 Shopline API】
     - GET /v1/customers/{customer_id}
     - GET /v1/customers/{customer_id}/store-credit-history
-    - GET /v1/customers/{customer_id}/member-points
+    - GET /v1/customers/{customer_id}/member_points
     - GET /v1/customers/{customer_id}/membership-tier-history
     - GET /v1/customers/{customer_id}/promotions
 

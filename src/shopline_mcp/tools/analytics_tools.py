@@ -7,7 +7,8 @@ from pydantic import Field
 
 from shopline_mcp.app import mcp
 from shopline_mcp.tools.base_tool import (
-    api_get, fetch_all_pages, money_to_float, get_translation, resolve_field
+    api_get, fetch_all_pages, money_to_float, get_translation, resolve_field,
+    MAX_SCAN_PAGES, pages_for
 )
 from collections import defaultdict
 from datetime import datetime
@@ -243,7 +244,7 @@ def get_inventory_turnover(
 ) -> dict:
     """計算庫存周轉指標：周轉天數、周轉率。需要商品庫存 + 銷售數據。"""
     # 取得商品庫存
-    products = fetch_all_pages("products", max_pages=10)
+    products = fetch_all_pages("products", max_pages=MAX_SCAN_PAGES)
 
     # 取得銷售數據
     params = {
@@ -316,8 +317,6 @@ def get_category_sales(
     channel: Literal["online", "pos", "all"] = Field(default="all", description="通路篩選"),
 ) -> dict:
     """依商品分類（Category）彙總銷售數據：各分類的營業額、銷量、商品數。需交叉 Categories API + Products + Orders。"""
-    from tools.base_tool import api_get
-
     # Step 1: 取得分類結構
     cat_data = api_get("categories", params={"per_page": 50})
     categories = cat_data.get("items", [])
@@ -332,7 +331,7 @@ def get_category_sales(
             cat_map[child.get("id")] = get_translation(child.get("name_translations"))
 
     # Step 2: 取得商品列表，建立 product_id → category 對照
-    products = fetch_all_pages("products", max_pages=10)
+    products = fetch_all_pages("products", max_pages=MAX_SCAN_PAGES)
     product_categories = {}  # product_id → [category_names]
     for p in products:
         pid = p.get("id")
@@ -418,9 +417,8 @@ def get_promotion_analysis(
 ) -> dict:
     """分析促銷活動效果：各活動的使用次數、折扣類型、狀態分佈。可搭配銷售數據評估促銷 ROI。"""
     discount_type = resolve_field(discount_type)
-    from tools.base_tool import api_get
 
-    promotions = fetch_all_pages("promotions", max_pages=10)
+    promotions = fetch_all_pages("promotions", max_pages=MAX_SCAN_PAGES)
 
     if status != "all":
         promotions = [p for p in promotions if p.get("status") == status]
@@ -584,9 +582,8 @@ def get_stock_transfer_suggestions(
     wh_data = api_get("warehouses", params={"per_page": 50})
     wh_map = {w["id"]: w.get("name", w["id"]) for w in wh_data.get("items", [])}
 
-    # 取得商品列表（限前 30 個）
-    products = fetch_all_pages("products", max_pages=10)
-    products = products[:30]
+    # 取得商品列表（限前 30 個）—— 只抓需要的頁數，不做全店掃描
+    products = fetch_all_pages("products", max_pages=pages_for(30))[:30]
 
     suggestions = []
 
@@ -666,7 +663,7 @@ def get_promotion_roi(
     【回傳結構】dict 含 period、total_promotions、promotions（各活動 ROI 明細）。
     """
     # Step 1: 取得促銷活動
-    promotions = fetch_all_pages("promotions", max_pages=10)
+    promotions = fetch_all_pages("promotions", max_pages=MAX_SCAN_PAGES)
 
     # 建立促銷 ID → 資訊對照
     promo_map = {}
@@ -950,7 +947,7 @@ def get_slow_movers(
     【回傳結構】dict 含 period、period_days、total_products、slow_movers（滯銷商品列表）。
     """
     # Step 1: 取得商品庫存
-    products = fetch_all_pages("products", max_pages=10)
+    products = fetch_all_pages("products", max_pages=MAX_SCAN_PAGES)
 
     # Step 2: 取得銷售數據
     params = {

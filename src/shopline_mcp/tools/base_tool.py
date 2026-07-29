@@ -15,6 +15,11 @@ def resolve_field(value):
     return value
 
 
+# 「掃全部」類查詢的安全上限（頁數）。DEFAULT_PER_PAGE=50 時約等於 10,000 筆。
+# 用意是防止大店翻頁失控，而非業務上的筆數限制 —— 切勿降到足以截斷正常資料的值。
+MAX_SCAN_PAGES = 200
+
+
 class ShoplineAPIError(Exception):
     def __init__(self, status_code, message, endpoint=""):
         self.status_code = status_code
@@ -106,6 +111,17 @@ def api_delete(endpoint_key, params=None, path_params=None, retries=3):
 
 def fetch_all_pages(endpoint_key, params=None, path_params=None, max_pages=None):
     """自動分頁遍歷，回傳所有 items"""
+    items, _total = fetch_pages_with_total(endpoint_key, params, path_params, max_pages)
+    return items
+
+
+def fetch_pages_with_total(endpoint_key, params=None, path_params=None, max_pages=None):
+    """同 fetch_all_pages，但額外回傳 API 回報的 total_count。
+
+    當 max_pages 會截斷結果時，呼叫端需要真實總數才能正確標示 truncated —
+    只比較「抓回筆數」與「回傳筆數」會在剛好抓滿上限時誤判為未截斷。
+    回傳 (items, total_count)；API 未提供 total_count 時為 None。
+    """
     params = dict(params or {})
     params.setdefault("per_page", DEFAULT_PER_PAGE)
     # orders_search 不支援 sort_by 參數
@@ -113,6 +129,7 @@ def fetch_all_pages(endpoint_key, params=None, path_params=None, max_pages=None)
         params.setdefault("sort_by", "desc")
 
     all_items = []
+    total_count = None
     page = 1
 
     while True:
@@ -126,6 +143,8 @@ def fetch_all_pages(endpoint_key, params=None, path_params=None, max_pages=None)
         all_items.extend(items)
 
         pagination = data.get("pagination", {})
+        if total_count is None:
+            total_count = pagination.get("total_count")
         total_pages = pagination.get("total_pages", 1)
 
         if page >= total_pages:
@@ -134,7 +153,61 @@ def fetch_all_pages(endpoint_key, params=None, path_params=None, max_pages=None)
         page += 1
         time.sleep(0.2)  # Rate limit 保護
 
-    return all_items
+    return all_items, total_count
+
+
+def pages_for(max_items):
+    """由需要的筆數反推頁數，取代寫死的 max_pages（原本等於硬性筆數上限）"""
+    return max(1, (max_items + DEFAULT_PER_PAGE - 1) // DEFAULT_PER_PAGE)
+
+
+def fetch_across_platforms(endpoint_key, platforms, params=None, max_pages=None,
+                           paginated=True, max_items=None):
+    """對「必須帶 platform 參數」的端點（如 channels / conversations）逐一查詢並合併。
+
+    Shopline 部分端點未帶 platform 會直接回 422，且無「查全部」的寫法，
+    因此只能逐一查詢再合併。
+
+    回傳 (items, failed_platforms, queried_platforms)。呼叫端應將 failed_platforms
+    一併回報，否則全部平台失敗時會回傳空清單，與「真的沒有資料」無法區分；
+    queried_platforms 只含實際查詢過的平台 —— 額度用完提早結束時，未查詢的平台
+    不可列為已查詢，否則會被誤讀成「該平台沒有資料」。
+    """
+    items = []
+    failed = []
+    queried = []
+
+    for plat in platforms:
+        if max_items is not None and len(items) >= max_items:
+            break
+        queried.append(plat)
+
+        call_params = dict(params or {})
+        call_params["platform"] = plat
+
+        # 依剩餘額度取頁數，避免每個平台各抓滿一份再丟掉
+        if max_items is not None:
+            remaining = max_items - len(items)
+            page_cap = min(max_pages, pages_for(remaining)) if max_pages else pages_for(remaining)
+        else:
+            page_cap = max_pages
+
+        try:
+            if paginated:
+                batch = fetch_all_pages(endpoint_key, params=call_params, max_pages=page_cap)
+            else:
+                data = api_get(endpoint_key, params=call_params)
+                batch = data.get("items", []) if isinstance(data, dict) else []
+        except Exception as e:
+            failed.append({"platform": plat, "error": str(e)[:200]})
+            continue
+
+        for item in batch:
+            if isinstance(item, dict):
+                item.setdefault("platform", plat)
+            items.append(item)
+
+    return items, failed, queried
 
 
 def fetch_all_pages_by_date_segments(endpoint_key, start_date, end_date, params=None):
@@ -170,6 +243,61 @@ def money_to_float(money_obj):
     if not money_obj:
         return 0.0
     return float(money_obj.get("dollars", 0) or 0)
+
+
+def extract_image_urls(obj, limit=10):
+    """從 Shopline 商品/變體物件取出圖片 URL 清單。
+
+    Shopline 各 endpoint 的圖片欄位形態不一致（media / images / image），
+    且每個 media item 可能是 {"images": {"original": {"url": ...}}} 或直接帶 url，
+    因此這裡採容錯解析：任何形態都盡量取到 original（退而求其次取第一個有 url 的尺寸）。
+    """
+    if not obj:
+        return []
+
+    def _url_from_media_item(item):
+        if isinstance(item, str):
+            return item
+        if not isinstance(item, dict):
+            return None
+        # {"images": {"original": {"url": ...}, "large": {...}}}
+        images = item.get("images")
+        if isinstance(images, dict):
+            original = images.get("original")
+            if isinstance(original, dict) and original.get("url"):
+                return original["url"]
+            for size in images.values():
+                if isinstance(size, dict) and size.get("url"):
+                    return size["url"]
+                if isinstance(size, str) and size:
+                    return size
+        # {"url": ...} 或 {"original": {"url": ...}}
+        if item.get("url"):
+            return item["url"]
+        original = item.get("original")
+        if isinstance(original, dict) and original.get("url"):
+            return original["url"]
+        if isinstance(original, str) and original:
+            return original
+        return None
+
+    urls = []
+    # Shopline 商品主圖為 medias（複數），變體為 media（單數），
+    # 分類為 banner_medias；image_url 為部分端點的扁平字串欄位。
+    for key in ("medias", "media", "banner_medias", "images", "image",
+                "image_url", "photos", "detail_medias"):
+        value = obj.get(key)
+        if not value:
+            continue
+        items = value if isinstance(value, list) else [value]
+        for item in items:
+            url = _url_from_media_item(item)
+            if url and url not in urls:
+                urls.append(url)
+        if urls:
+            break
+
+    return urls[:limit]
 
 
 def get_translation(obj, lang="zh-hant", fallback="en"):

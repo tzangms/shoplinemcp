@@ -659,7 +659,7 @@ def get_order_action_logs(
     【用途】取得指定訂單的所有操作歷程紀錄，包含狀態變更、人員操作、時間戳記等，適合稽核追蹤。
 
     【呼叫的 Shopline API】
-    - GET /v1/orders/{order_id}/action-logs
+    - GET /v1/orders/{order_id}/action_logs
 
     【回傳結構】
     {
