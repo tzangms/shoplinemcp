@@ -28,6 +28,13 @@ dependencies = [
     "requests>=2.31.0",
 ]
 
+[project.optional-dependencies]
+# 遠端（HTTP）部署才需要；本機 stdio 模式不必安裝
+remote = [
+    "uvicorn>=0.30.0",
+    "starlette>=0.37.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/tzangms/shoplinemcp"
 Repository = "https://github.com/tzangms/shoplinemcp"

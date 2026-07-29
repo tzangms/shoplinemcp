@@ -59,11 +59,69 @@ import shopline_mcp.tools.writes.order_delivery_writes  # noqa: F401
 import shopline_mcp.tools.writes.delivery_option_writes  # noqa: F401
 import shopline_mcp.tools.writes.merchant_writes  # noqa: F401
 
+import os
+
 from shopline_mcp.app import mcp
 
 
+def _require(name: str) -> str:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"{name} 未設定。遠端模式會把商店資料與 68 個寫入操作暴露在網路上，"
+            f"因此缺少 {name} 時拒絕啟動。"
+        )
+    return value
+
+
+def build_http_app():
+    """組出可部署的 ASGI app（Zeabur / 任何 ASGI 主機皆可用）。
+
+    與 stdio 模式的差異在於多了兩層防護：
+    - Bearer token 認證：沒有它，任何知道網址的人都能操作商店
+    - 寫入二階段確認：遠端沒有客戶端權限提示可依賴，改由伺服器強制
+    """
+    from shopline_mcp.http_auth import BearerAuthMiddleware
+    from shopline_mcp.security import install_write_confirmation
+
+    auth_token = _require("MCP_AUTH_TOKEN")
+    _require("SHOPLINE_API_TOKEN")
+
+    # 確認碼的簽章金鑰預設沿用存取金鑰，可另外指定
+    confirm_secret = os.environ.get("MCP_CONFIRM_SECRET", "").strip() or auth_token
+
+    protected = install_write_confirmation(mcp, confirm_secret)
+
+    mcp.settings.host = os.environ.get("HOST", "0.0.0.0")
+    mcp.settings.port = int(os.environ.get("PORT", "8000"))
+
+    app = mcp.streamable_http_app()
+
+    async def healthz(request):
+        from starlette.responses import JSONResponse
+        return JSONResponse({"status": "ok", "write_tools_protected": protected})
+
+    app.add_route("/healthz", healthz, methods=["GET"])
+    app.add_middleware(BearerAuthMiddleware, token=auth_token)
+    return app
+
+
 def main():
-    mcp.run(transport="stdio")
+    transport = os.environ.get("MCP_TRANSPORT", "stdio").strip().lower()
+
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+        return
+
+    if transport in ("http", "streamable-http"):
+        import uvicorn
+        app = build_http_app()
+        uvicorn.run(app, host=mcp.settings.host, port=mcp.settings.port)
+        return
+
+    raise RuntimeError(
+        f"不支援的 MCP_TRANSPORT: {transport!r}（可用 stdio 或 http）"
+    )
 
 
 if __name__ == "__main__":
