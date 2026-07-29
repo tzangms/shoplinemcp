@@ -2,6 +2,8 @@
 商家 Tools — 商家帳號資訊查詢
 """
 
+from pydantic import Field
+
 from shopline_mcp.app import mcp
 from shopline_mcp.tools.base_tool import api_get, get_translation
 
@@ -43,7 +45,9 @@ def list_merchants() -> dict:
 
 
 @mcp.tool()
-def get_merchant_detail(merchant_id: str) -> dict:
+def get_merchant_detail(
+    merchant_id: str = Field(description="商店 ID（由 list_merchants 回傳的 id 欄位取得）"),
+) -> dict:
     """取得指定商家的詳細資訊。
 
     【用途】

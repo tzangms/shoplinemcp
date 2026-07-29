@@ -2,12 +2,16 @@
 員工 Tools — 員工權限查詢
 """
 
+from pydantic import Field
+
 from shopline_mcp.app import mcp
 from shopline_mcp.tools.base_tool import api_get
 
 
 @mcp.tool()
-def get_staff_permissions(staff_id: str) -> dict:
+def get_staff_permissions(
+    staff_id: str = Field(description="員工 ID（可由 get_token_info 回傳的 staff.id 取得）"),
+) -> dict:
     """取得指定員工的權限設定。
 
     【用途】

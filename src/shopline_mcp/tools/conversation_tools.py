@@ -6,11 +6,22 @@ from typing import Optional
 from pydantic import Field
 
 from shopline_mcp.app import mcp
-from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, money_to_float, get_translation
+from shopline_mcp.tools.base_tool import (
+    fetch_all_pages, resolve_field, fetch_across_platforms
+)
+
+# Shopline /v1/conversations 要求必須帶 platform，未帶會回 422。
+# 合法值由 API 錯誤訊息確認為以下三種。
+CONVERSATION_PLATFORMS = ["shop_messages", "order_messages", "return_order_messages"]
 
 
 @mcp.tool()
 def list_conversations(
+    platform: Optional[str] = Field(
+        default=None,
+        description="對話類型：shop_messages（商店訊息）/ order_messages（訂單訊息）/ "
+                    "return_order_messages（退貨訊息）。不填則查詢全部三種並合併",
+    ),
     max_results: int = Field(default=50, description="最多回傳筆數"),
 ) -> dict:
     """取得客服對話列表。
@@ -21,15 +32,24 @@ def list_conversations(
     取得完整聊天記錄。
 
     【呼叫的 Shopline API】
-    - GET /v1/conversations
+    - GET /v1/conversations?platform={platform}
 
     【回傳結構】
-    dict 含 total_found, returned, conversations[]。
-    每個 conversation 包含 id, platform（通訊平台）, status（對話狀態）,
-    created_at。
+    dict 含 fetched, returned, platforms_queried[], platforms_failed[], conversations[]。
+    每個 conversation 包含 id, platform（對話類型）, status（對話狀態）, created_at。
+    注意：fetched 為實際抓取筆數，因額度用滿即停，並非全站總數；
+    platforms_queried 只列實際查詢過的平台。
     """
-    max_pages = max(1, max_results // 50)
-    items = fetch_all_pages("conversations", max_pages=max_pages)
+    platform = resolve_field(platform)
+    max_results = resolve_field(max_results)
+
+    platforms = [platform] if platform else CONVERSATION_PLATFORMS
+
+    # max_items 讓額度跨平台共用：抓滿 max_results 就停，
+    # 不會每個平台各抓滿一份再丟掉多餘的。
+    items, failed, queried = fetch_across_platforms(
+        "conversations", platforms, max_items=max_results
+    )
 
     results = []
     for conv in items[:max_results]:
@@ -41,8 +61,10 @@ def list_conversations(
         })
 
     return {
-        "total_found": len(items),
+        "fetched": len(items),
         "returned": len(results),
+        "platforms_queried": queried,
+        "platforms_failed": failed,
         "conversations": results,
     }
 

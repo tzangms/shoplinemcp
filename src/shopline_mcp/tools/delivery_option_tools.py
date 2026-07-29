@@ -2,8 +2,10 @@
 配送方式 Tools — 商店配送選項與時段查詢
 """
 
+from pydantic import Field
+
 from shopline_mcp.app import mcp
-from shopline_mcp.tools.base_tool import api_get, get_translation
+from shopline_mcp.tools.base_tool import api_get, get_translation, money_to_float
 
 
 @mcp.tool()
@@ -19,22 +21,35 @@ def list_delivery_options() -> dict:
 
     【回傳結構】
     dict 含 total, delivery_options[]。
-    每個 delivery_option 包含 id, name, delivery_type,
-    enabled, position, price, created_at 等。
+    每個 delivery_option 包含 id, name, delivery_type, status,
+    fee_type, rates（運費級距）, supported_countries, support_cod 等。
     """
     data = api_get("delivery_options")
     items = data.get("items", []) if isinstance(data, dict) else []
 
     results = []
     for d in items:
+        # 運費級距：delivery_rates 內為 Shopline 金額物件
+        rates = []
+        for r in (d.get("delivery_rates") or []):
+            rates.append({
+                "name": get_translation(r.get("name_translations")) or r.get("name"),
+                "fee": money_to_float(r.get("fee") or r.get("price")),
+            })
+
         results.append({
             "id": d.get("id"),
             "name": get_translation(d.get("name_translations")) or d.get("name"),
+            "description": get_translation(d.get("description_translations")),
             "delivery_type": d.get("delivery_type"),
-            "enabled": d.get("enabled"),
-            "position": d.get("position"),
-            "price": d.get("price"),
-            "created_at": d.get("created_at"),
+            "status": d.get("status"),
+            "fee_type": d.get("fee_type"),
+            "rates": rates,
+            "region_type": d.get("region_type"),
+            "supported_countries": d.get("supported_countries"),
+            "requires_customer_address": d.get("requires_customer_address"),
+            "support_cod": d.get("support_cod"),
+            "is_return": d.get("is_return"),
         })
 
     return {
@@ -44,7 +59,9 @@ def list_delivery_options() -> dict:
 
 
 @mcp.tool()
-def get_delivery_option_detail(delivery_option_id: str) -> dict:
+def get_delivery_option_detail(
+    delivery_option_id: str = Field(description="物流方式 ID（由 list_delivery_options 回傳的 id 欄位取得）"),
+) -> dict:
     """取得指定配送方式的詳細資訊。
 
     【用途】
@@ -55,8 +72,9 @@ def get_delivery_option_detail(delivery_option_id: str) -> dict:
     - GET /v1/delivery_options/{delivery_option_id}
 
     【回傳結構】
-    dict 含配送方式詳細欄位：id, name, delivery_type,
-    enabled, price, weight_limit, regions, created_at 等。
+    dict 含 id, name, description, delivery_type, status, fee_type,
+    rates（運費級距）, region_type, supported_countries, support_cod 等，
+    欄位與 list_delivery_options 一致。
     """
     data = api_get(
         "delivery_option_detail",
@@ -64,22 +82,36 @@ def get_delivery_option_detail(delivery_option_id: str) -> dict:
     )
     d = data.get("delivery_option", data) if isinstance(data, dict) else {}
 
+    rates = []
+    for r in (d.get("delivery_rates") or []):
+        rates.append({
+            "name": get_translation(r.get("name_translations")) or r.get("name"),
+            "fee": money_to_float(r.get("fee") or r.get("price")),
+        })
+
     return {
         "id": d.get("id"),
         "name": get_translation(d.get("name_translations")) or d.get("name"),
+        "description": get_translation(d.get("description_translations")),
+        "delivery_time_description": get_translation(d.get("delivery_time_description_translations")),
         "delivery_type": d.get("delivery_type"),
-        "enabled": d.get("enabled"),
-        "position": d.get("position"),
-        "price": d.get("price"),
-        "weight_limit": d.get("weight_limit"),
-        "regions": d.get("regions", []),
-        "created_at": d.get("created_at"),
-        "updated_at": d.get("updated_at"),
+        "status": d.get("status"),
+        "fee_type": d.get("fee_type"),
+        "rates": rates,
+        "region_type": d.get("region_type"),
+        "supported_countries": d.get("supported_countries"),
+        "requires_customer_address": d.get("requires_customer_address"),
+        "support_cod": d.get("support_cod"),
+        "support_non_cod": d.get("support_non_cod"),
+        "is_return": d.get("is_return"),
+        "excluded_payment_ids": d.get("excluded_payment_ids", []),
     }
 
 
 @mcp.tool()
-def get_delivery_time_slots(delivery_option_id: str) -> dict:
+def get_delivery_time_slots(
+    delivery_option_id: str = Field(description="物流方式 ID（由 list_delivery_options 回傳的 id 欄位取得）"),
+) -> dict:
     """取得指定配送方式的可用時段清單。
 
     【用途】

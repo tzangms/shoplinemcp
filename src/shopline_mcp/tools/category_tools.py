@@ -6,7 +6,9 @@ from typing import Optional
 from pydantic import Field
 
 from shopline_mcp.app import mcp
-from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, money_to_float, get_translation
+from shopline_mcp.tools.base_tool import (
+    api_get, fetch_all_pages, get_translation, extract_image_urls
+)
 
 
 @mcp.tool()
@@ -31,11 +33,10 @@ def get_category_tree() -> dict:
     for cat in items:
         flat.append({
             "id": cat.get("id"),
-            "name": get_translation(cat.get("title_translations") or cat.get("name")),
+            "name": get_translation(cat.get("name_translations") or cat.get("title_translations")) or cat.get("name"),
             "parent_id": cat.get("parent_id"),
-            "position": cat.get("position"),
-            "created_at": cat.get("created_at"),
-            "updated_at": cat.get("updated_at"),
+            "status": cat.get("status"),
+            "priority": cat.get("priority"),
         })
 
     # 組成樹狀結構
@@ -69,18 +70,19 @@ def get_category_detail(
     - GET /v1/categories/{category_id}
 
     【回傳結構】
-    dict 包含 id, name, parent_id, description, position, created_at, updated_at。
+    dict 包含 id, name, parent_id, seo_description, status, priority, image_url。
+    註：Shopline 分類無一般說明欄位，seo_description 來自 seo_description_translations。
     """
     data = api_get("category_detail", path_params={"category_id": category_id})
     cat = data.get("item", data) if isinstance(data, dict) else data
 
     return {
         "id": cat.get("id"),
-        "name": get_translation(cat.get("title_translations") or cat.get("name")),
+        "name": get_translation(cat.get("name_translations") or cat.get("title_translations")) or cat.get("name"),
         "parent_id": cat.get("parent_id"),
-        "description": get_translation(cat.get("description_translations") or cat.get("description")),
-        "position": cat.get("position"),
-        "image_url": cat.get("image_url"),
-        "created_at": cat.get("created_at"),
-        "updated_at": cat.get("updated_at"),
+        # Shopline 分類沒有一般說明欄位，只有 SEO 說明，故據實命名為 seo_description
+        "seo_description": get_translation(cat.get("seo_description_translations")),
+        "status": cat.get("status"),
+        "priority": cat.get("priority"),
+        "image_url": (extract_image_urls(cat) or [None])[0],
     }

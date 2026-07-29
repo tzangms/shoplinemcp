@@ -210,7 +210,7 @@ def adjust_customer_member_points(
     增加或扣除客戶會員點數，常用於手動補點、活動贈點、客訴補償等場景。
 
     【呼叫的 Shopline API】
-    - PUT /v1/customers/{customer_id}/member-points
+    - PUT /v1/customers/{customer_id}/member_points
 
     【回傳結構】
     dict 含 success: bool, resource_id: str, message: str。

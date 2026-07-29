@@ -206,7 +206,10 @@ def get_top_products(
     sort_by: Literal["quantity", "revenue"] = Field(default="revenue", description="排序依據"),
     channel: Literal["online", "pos", "all"] = Field(default="all", description="通路篩選"),
 ) -> dict:
-    """取得指定時間區間的商品銷售排行榜（依銷量或營業額排序），或滯銷商品清單。"""
+    """取得指定時間區間的商品銷售排行榜，依銷量（quantity）或營業額（revenue）排序。
+
+    只涵蓋「有賣出」的商品；要找完全沒賣或賣很少的滯銷品請改用 get_slow_movers。
+    """
     params = {
         "created_after": f"{start_date}T00:00:00Z",
         "created_before": f"{end_date}T23:59:59Z",
@@ -597,7 +600,10 @@ def get_order_labels(
     order_id: str = Field(description="訂單內部 ID（由 query_orders 回傳的 id 欄位，非 order_number）"),
 ) -> dict:
     """
-    【用途】取得指定訂單的配送標籤資訊，可用於列印物流面單或查詢寄件單號。
+    【用途】取得指定訂單的「物流面單／寄送單」資訊（寄件單號、物流商）。
+
+    注意：此處的 label 指出貨面單，與 get_order_tags 的「標籤」不同 ——
+    要查訂單分類用的標記請用 get_order_tags。
 
     【呼叫的 Shopline API】
     - GET /v1/orders/{order_id}/labels
@@ -659,7 +665,7 @@ def get_order_action_logs(
     【用途】取得指定訂單的所有操作歷程紀錄，包含狀態變更、人員操作、時間戳記等，適合稽核追蹤。
 
     【呼叫的 Shopline API】
-    - GET /v1/orders/{order_id}/action-logs
+    - GET /v1/orders/{order_id}/action_logs
 
     【回傳結構】
     {
