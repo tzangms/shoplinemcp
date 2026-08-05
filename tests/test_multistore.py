@@ -123,3 +123,47 @@ def test_build_stores_empty_raises(monkeypatch):
             monkeypatch.delenv(k, raising=False)
     with pytest.raises(RuntimeError):
         remote.build_stores()
+
+
+def test_main_default_disables_dns_rebinding(monkeypatch):
+    import shopline_mcp.remote as remote
+    from shopline_mcp.app import mcp
+
+    monkeypatch.setenv("SHOPLINE_MCP_KEY", "k")
+    monkeypatch.setenv("SHOPLINE_API_TOKEN", "t")
+    monkeypatch.delenv("SHOPLINE_ALLOWED_HOSTS", raising=False)
+    monkeypatch.setenv("PORT", "8080")
+
+    captured = {}
+
+    def fake_run(app, host=None, port=None, **kwargs):
+        captured["host"] = host
+        captured["port"] = port
+
+    monkeypatch.setattr(remote.uvicorn, "run", fake_run)
+
+    remote.main()
+
+    assert mcp.settings.streamable_http_path == "/mcp"
+    assert mcp.settings.transport_security.enable_dns_rebinding_protection is False
+    assert captured["host"] == "0.0.0.0"
+    assert captured["port"] == 8080
+
+
+def test_main_allowed_hosts_enables_whitelist(monkeypatch):
+    import shopline_mcp.remote as remote
+    from shopline_mcp.app import mcp
+
+    monkeypatch.setenv("SHOPLINE_MCP_KEY", "k")
+    monkeypatch.setenv("SHOPLINE_API_TOKEN", "t")
+    monkeypatch.setenv("SHOPLINE_ALLOWED_HOSTS", "example.com")
+    monkeypatch.setenv("PORT", "8080")
+
+    def fake_run(app, host=None, port=None, **kwargs):
+        pass
+
+    monkeypatch.setattr(remote.uvicorn, "run", fake_run)
+
+    remote.main()
+
+    assert "example.com" in mcp.settings.transport_security.allowed_hosts
