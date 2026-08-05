@@ -11,12 +11,13 @@ def test_main_requires_key(monkeypatch):
 
 
 def test_importing_remote_does_not_start_stdio(monkeypatch):
-    # import 不得啟動任何 server（mcp.run 只能在 main() 內呼叫）
-    called = {}
-    remote = importlib.import_module("shopline_mcp.remote")
+    # import 不得啟動任何 server（mcp.run 只能在 main() 內呼叫）。
+    # 先 patch 掉 mcp.run 再 reload 模組，確認 import 過程從未呼叫 run。
     from shopline_mcp.app import mcp
+
+    called = {}
     monkeypatch.setattr(mcp, "run", lambda *a, **k: called.setdefault("run", True))
-    # 只是 import 過，run 不該被呼叫
+    importlib.reload(importlib.import_module("shopline_mcp.remote"))
     assert "run" not in called
 
 
@@ -34,11 +35,11 @@ def test_main_configures_key_path_and_runs(monkeypatch):
     from shopline_mcp.app import mcp
 
     captured = {}
-    monkeypatch.setattr(mcp, "run", lambda *a, **k: captured.setdefault("kwargs", k) or captured.setdefault("args", a))
+    monkeypatch.setattr(mcp, "run", lambda *a, **k: captured.update(args=a, kwargs=k))
     remote.main()
 
     assert mcp.settings.host == "0.0.0.0"
     assert mcp.settings.port == 9000
     assert mcp.settings.streamable_http_path == "/secret123/mcp"
     # transport 以 streamable-http 呼叫
-    assert captured["args"][0] == "streamable-http" or captured["kwargs"].get("transport") == "streamable-http"
+    assert captured["args"] == ("streamable-http",)
