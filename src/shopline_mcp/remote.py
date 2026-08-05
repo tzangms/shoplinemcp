@@ -108,11 +108,9 @@ class MultiStoreKeyMiddleware:
 def main() -> None:
     stores = build_stores()
 
-    mcp.settings.host = "0.0.0.0"
     port = int(os.environ.get("PORT", "8080"))
-    mcp.settings.port = port
 
-    allowed = [h.strip() for h in os.environ.get("SHOPLINE_ALLOWED_HOSTS", "").split(",") if h.strip()]
+    allowed =[h.strip() for h in os.environ.get("SHOPLINE_ALLOWED_HOSTS", "").split(",") if h.strip()]
     if allowed:
         mcp.settings.transport_security = TransportSecuritySettings(allowed_hosts=allowed)
     else:
