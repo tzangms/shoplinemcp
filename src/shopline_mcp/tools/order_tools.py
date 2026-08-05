@@ -23,8 +23,8 @@ VALID_ORDER_STATUSES = {"completed", "confirmed"}
 # ============================================================
 @mcp.tool()
 def query_orders(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
     status: Optional[Literal["pending", "confirmed", "completed", "cancelled"]] = Field(default=None, description="訂單狀態篩選"),
     channel: Literal["online", "pos", "all"] = Field(default="all", description="通路篩選: online=線上官網, pos=實體門市, all=全部"),
     store_name: Optional[str] = Field(default=None, description="門市名稱篩選（如：松菸誠品、新光A11）"),
@@ -99,8 +99,8 @@ def query_orders(
 # ============================================================
 @mcp.tool()
 def get_sales_summary(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
     status: str = Field(default="completed", description="訂單狀態"),
     channel: Literal["online", "pos", "all"] = Field(default="all", description="通路篩選"),
     store_name: Optional[str] = Field(default=None, description="門市名稱篩選"),
@@ -200,8 +200,8 @@ def get_sales_summary(
 # ============================================================
 @mcp.tool()
 def get_top_products(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
     top_n: int = Field(default=20, description="顯示前 N 名"),
     sort_by: Literal["quantity", "revenue"] = Field(default="revenue", description="排序依據"),
     channel: Literal["online", "pos", "all"] = Field(default="all", description="通路篩選"),
@@ -273,8 +273,8 @@ def get_top_products(
 # ============================================================
 @mcp.tool()
 def get_sales_trend(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
     granularity: Literal["daily", "weekly", "monthly"] = Field(default="daily", description="時間粒度"),
     channel: Literal["online", "pos", "all"] = Field(default="all", description="通路篩選"),
 ) -> dict:
@@ -338,8 +338,8 @@ def get_sales_trend(
 # ============================================================
 @mcp.tool()
 def get_channel_comparison(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
 ) -> dict:
     """比較各門市/通路的同期業績：營業額、訂單數、客單價等。支援線上 vs 門市，或門市之間的比較。"""
     params = {
@@ -460,8 +460,8 @@ def get_order_detail(
 # ============================================================
 @mcp.tool()
 def get_refund_summary(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
 ) -> dict:
     """取得指定時間區間的退貨退款統計：退款金額、退貨筆數、退貨率、退貨商品明細。支援計算淨營收。"""
     params = {
@@ -518,8 +518,8 @@ def get_refund_summary(
 # ============================================================
 @mcp.tool()
 def get_archived_orders(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
     max_results: int = Field(default=100, description="最多回傳筆數"),
 ) -> dict:
     """

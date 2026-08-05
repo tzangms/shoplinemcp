@@ -312,8 +312,8 @@ def get_inventory_turnover(
 # ============================================================
 @mcp.tool()
 def get_category_sales(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
     channel: Literal["online", "pos", "all"] = Field(default="all", description="通路篩選"),
 ) -> dict:
     """依商品分類（Category）彙總銷售數據：各分類的營業額、銷量、商品數。需交叉 Categories API + Products + Orders。"""
@@ -474,8 +474,8 @@ def get_promotion_analysis(
 # ============================================================
 @mcp.tool()
 def get_refund_by_store(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
 ) -> dict:
     """依門市/通路分析退貨退款分佈。
 
@@ -650,8 +650,8 @@ def get_stock_transfer_suggestions(
 # ============================================================
 @mcp.tool()
 def get_promotion_roi(
-    start_date: str = Field(description="起始日期 YYYY-MM-DD"),
-    end_date: str = Field(description="結束日期 YYYY-MM-DD"),
+    start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
+    end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
 ) -> dict:
     """交叉比對促銷活動與銷售數據，計算各活動的 ROI。
 
