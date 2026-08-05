@@ -48,6 +48,9 @@ def test_build_stores_legacy_pair(monkeypatch):
 def test_build_stores_paired_env(monkeypatch):
     import shopline_mcp.remote as remote
     monkeypatch.delenv("SHOPLINE_MCP_KEY", raising=False)
+    for k in list(os.environ):
+        if k.startswith("SHOPLINE_STORE_"):
+            monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("SHOPLINE_STORE_B_KEY", "keyB")
     monkeypatch.setenv("SHOPLINE_STORE_B_TOKEN", "tokB")
     stores = remote.build_stores()
