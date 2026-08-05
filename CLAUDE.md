@@ -12,6 +12,7 @@
 - `SHOPLINE_MCP_KEY` — URL 路徑密鑰（連接器門鎖）
 - `SHOPLINE_API_TOKEN` — Shopline Open API token（店家資料鑰匙；由後台 Settings → Staff Settings → API Auth 產生）
 - `PORT` — 已設為 `${WEB_PORT}`（Zeabur 自動注入）
+- 多店（multi-tenant）：每加一間店，補一組 `SHOPLINE_STORE_<label>_KEY` + `SHOPLINE_STORE_<label>_TOKEN`。A 店沿用舊的 `SHOPLINE_MCP_KEY` / `SHOPLINE_API_TOKEN` pair，B 店則用新的一組（例如 `SHOPLINE_STORE_B_KEY` / `SHOPLINE_STORE_B_TOKEN`）。未知的 URL key 會回 404。
 
 ### Claude 自訂連接器網址
 `https://shopline-mcp.zeabur.app/<SHOPLINE_MCP_KEY>/mcp`

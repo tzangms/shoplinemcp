@@ -58,6 +58,15 @@ Deploy once to a host (e.g. Zeabur) and connect from Claude with just a URL — 
 
 The key in the path acts as a simple bearer for a single trusted user. Keep the full URL secret. Optionally set `SHOPLINE_ALLOWED_HOSTS` (comma-separated) to enable host-whitelist DNS-rebinding protection.
 
+#### Multiple stores (multi-tenant)
+
+One deployment can serve several Shopline stores, each with its own URL key and token.
+
+- Keep the single-store pair `SHOPLINE_MCP_KEY` + `SHOPLINE_API_TOKEN` for the first store.
+- Add each additional store as a pair: `SHOPLINE_STORE_<LABEL>_KEY` + `SHOPLINE_STORE_<LABEL>_TOKEN`.
+
+Each store gets its own connector URL: `https://<host>/<that-store-key>/mcp`. An unknown key returns 404.
+
 ### Alternative: pip install
 
 If you prefer a permanent install:
