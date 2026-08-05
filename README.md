@@ -42,6 +42,22 @@ claude mcp add --transport stdio shopline \
   -- uvx shopline-mcp
 ```
 
+### Remote HTTP (Claude custom connector)
+
+Deploy once to a host (e.g. Zeabur) and connect from Claude with just a URL — no local install.
+
+1. Deploy this repo. On **Zeabur**, `zbpack.json` runs `python -m shopline_mcp.remote`.
+2. Set environment variables on the service:
+   - `SHOPLINE_API_TOKEN` — your Shopline API token
+   - `SHOPLINE_MCP_KEY` — a secret string used as the URL key
+3. In Claude, add a **custom connector** with URL:
+
+   ```
+   https://<your-host>/<SHOPLINE_MCP_KEY>/mcp
+   ```
+
+The key in the path acts as a simple bearer for a single trusted user. Keep the full URL secret. Optionally set `SHOPLINE_ALLOWED_HOSTS` (comma-separated) to enable host-whitelist DNS-rebinding protection.
+
 ### Alternative: pip install
 
 If you prefer a permanent install:
