@@ -1,9 +1,16 @@
 """Shopline API 設定"""
 import os
+import contextvars
 
 BASE_URL = "https://open.shopline.io"
 API_VERSION = "v1"
 ACCESS_TOKEN = os.environ.get("SHOPLINE_API_TOKEN", "")
+
+# 當前請求要使用的 Shopline token（remote 多店模式由 middleware 設定）。
+# 未設定時（stdio／單店）fallback 到環境變數 ACCESS_TOKEN。
+current_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "shopline_current_token", default=None
+)
 
 # 預設分頁設定
 DEFAULT_PER_PAGE = 50  # API 建議上限
@@ -212,13 +219,14 @@ ENDPOINTS = {
 
 
 def get_headers():
-    if not ACCESS_TOKEN:
+    token = current_token.get() or ACCESS_TOKEN
+    if not token:
         raise RuntimeError(
             "SHOPLINE_API_TOKEN environment variable is not set. "
             "Run: export SHOPLINE_API_TOKEN=your_token_here"
         )
     return {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
 

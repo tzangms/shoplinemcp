@@ -1,3 +1,5 @@
 mcp[cli]>=1.12,<2
 httpx>=0.27.0
 requests>=2.31.0
+# 安裝本套件（含 console script shopline-mcp-remote）；pyproject 亦會帶入上述相依。
+.

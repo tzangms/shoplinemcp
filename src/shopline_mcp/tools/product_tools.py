@@ -19,7 +19,7 @@ def _variant_fields(v):
     優先用 feed_variations（有明確的 color / size 具名欄位），
     沒有時才退回 fields_translations 的位置陣列（第 0 個當顏色、第 1 個當尺寸）。
     """
-    fields = v.get("fields_translations", {}).get("zh-hant", [])
+    fields = (v.get("fields_translations") or {}).get("zh-hant", [])
     feed = v.get("feed_variations") or {}
 
     color = (get_translation(feed["color"]) if "color" in feed

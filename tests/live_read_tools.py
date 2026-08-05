@@ -43,7 +43,7 @@ def readonly_tool_names():
             tree = ast.parse(open(path, encoding='utf-8').read())
             in_writes_dir = os.path.basename(root) == 'writes'
             for node in ast.walk(tree):
-                if not isinstance(node, ast.FunctionDef):
+                if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     continue
                 called = {n.func.id for n in ast.walk(node)
                           if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
