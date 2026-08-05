@@ -35,6 +35,7 @@ Issues = "https://github.com/tzangms/shoplinemcp/issues"
 
 [project.scripts]
 shopline-mcp = "shopline_mcp.server:main"
+shopline-mcp-remote = "shopline_mcp.remote:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
