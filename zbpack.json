@@ -1,0 +1,4 @@
+{
+  "install_command": "pip install .",
+  "start_command": "python -m shopline_mcp.remote"
+}
