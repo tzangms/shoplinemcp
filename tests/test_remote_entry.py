@@ -21,6 +21,13 @@ def test_importing_remote_does_not_start_stdio(monkeypatch):
     assert "run" not in called
 
 
+def test_main_rejects_unsafe_key_characters(monkeypatch):
+    monkeypatch.setenv("SHOPLINE_MCP_KEY", "bad/key")
+    remote = importlib.import_module("shopline_mcp.remote")
+    with pytest.raises(RuntimeError, match="SHOPLINE_MCP_KEY"):
+        remote.main()
+
+
 def test_main_configures_key_path_and_runs(monkeypatch):
     monkeypatch.setenv("SHOPLINE_MCP_KEY", "secret123")
     monkeypatch.setenv("PORT", "9000")

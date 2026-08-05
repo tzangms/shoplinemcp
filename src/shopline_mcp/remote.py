@@ -12,11 +12,14 @@
 from __future__ import annotations
 
 import os
+import re
 
 from mcp.server.transport_security import TransportSecuritySettings
 
 import shopline_mcp.server  # noqa: F401  # 觸發所有 @mcp.tool() 註冊
 from shopline_mcp.app import mcp
+
+_KEY_SAFE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def main() -> None:
@@ -24,6 +27,11 @@ def main() -> None:
     if not key:
         raise RuntimeError(
             "缺少 SHOPLINE_MCP_KEY：遠端版必須設密鑰，否則任何人拿到網址就能操作店家資料。"
+        )
+    if not _KEY_SAFE_RE.match(key):
+        raise RuntimeError(
+            "SHOPLINE_MCP_KEY 含不允許的字元：只能使用英數字、'-'、'_'，"
+            "避免產生異常路徑（例如包含 '/' 導致路徑破損或類似路徑穿越的結構）。"
         )
 
     mcp.settings.host = "0.0.0.0"
