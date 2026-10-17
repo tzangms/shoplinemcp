@@ -5,11 +5,11 @@
 from typing import List
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_patch, api_delete
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_product_review(
     review_data: dict = Field(
         description=(
@@ -45,7 +45,7 @@ def create_product_review(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def bulk_create_product_reviews(
     reviews: List[dict] = Field(
         description=(
@@ -82,7 +82,7 @@ def bulk_create_product_reviews(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_product_review(
     comment_id: str = Field(description="評論 ID"),
     review_data: dict = Field(
@@ -114,7 +114,7 @@ def update_product_review(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def bulk_update_product_reviews(
     updates: List[dict] = Field(
         description=(
@@ -150,7 +150,7 @@ def bulk_update_product_reviews(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_product_review(
     comment_id: str = Field(description="評論 ID"),
 ) -> dict:
@@ -178,7 +178,7 @@ def delete_product_review(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def bulk_delete_product_reviews(
     comment_ids: List[str] = Field(
         description="要刪除的評論 ID 列表，例如 [\"C001\", \"C002\", \"C003\"]"

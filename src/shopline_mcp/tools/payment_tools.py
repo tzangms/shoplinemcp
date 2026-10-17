@@ -2,11 +2,11 @@
 付款方式 Tools — 商店付款方式設定查詢
 """
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, get_translation
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_payments() -> dict:
     """取得商店啟用的付款方式清單。
 

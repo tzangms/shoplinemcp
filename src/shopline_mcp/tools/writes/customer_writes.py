@@ -5,11 +5,11 @@
 from typing import Optional, List
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_put, api_delete, resolve_field
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_customer(
     name: str = Field(description="客戶姓名"),
     email: Optional[str] = Field(default=None, description="Email"),
@@ -59,7 +59,7 @@ def create_customer(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_customer(
     customer_id: str = Field(description="客戶內部 ID"),
     name: Optional[str] = Field(default=None, description="新姓名"),
@@ -106,7 +106,7 @@ def update_customer(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_customer(
     customer_id: str = Field(description="客戶內部 ID"),
 ) -> dict:
@@ -133,7 +133,7 @@ def delete_customer(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_customer_tags(
     customer_id: str = Field(description="客戶內部 ID"),
     tags: List[str] = Field(description="標籤列表（會取代現有標籤）"),
@@ -163,7 +163,7 @@ def update_customer_tags(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_customer_store_credits(
     customer_id: str = Field(description="客戶內部 ID"),
     amount: float = Field(description="調整金額（正數=增加，負數=扣除）"),
@@ -198,7 +198,7 @@ def update_customer_store_credits(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def adjust_customer_member_points(
     customer_id: str = Field(description="客戶內部 ID"),
     points: int = Field(description="調整點數（正數=增加，負數=扣除）"),

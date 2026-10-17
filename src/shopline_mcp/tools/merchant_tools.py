@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, get_translation
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_merchants() -> dict:
     """取得所有商家清單。
 
@@ -44,7 +44,7 @@ def list_merchants() -> dict:
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_merchant_detail(
     merchant_id: str = Field(description="商店 ID（由 list_merchants 回傳的 id 欄位取得）"),
 ) -> dict:

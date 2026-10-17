@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_put, api_delete
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_category(
     category_data: dict = Field(description="分類資料，例如 {\"name\": \"夏季新品\", \"parent_id\": null}"),
 ) -> dict:
@@ -40,7 +40,7 @@ def create_category(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_category(
     category_id: str = Field(description="分類 ID"),
     category_data: dict = Field(description="要更新的分類欄位，例如 {\"name\": \"冬季特賣\"}"),
@@ -69,7 +69,7 @@ def update_category(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_category(
     category_id: str = Field(description="分類 ID"),
 ) -> dict:

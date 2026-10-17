@@ -5,11 +5,11 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, money_to_float, get_translation
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_flash_price_campaigns(
     max_results: int = Field(default=50, description="最多回傳筆數"),
 ) -> dict:
@@ -47,7 +47,7 @@ def list_flash_price_campaigns(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_flash_price_campaign_detail(
     campaign_id: str = Field(description="快閃價格活動 ID（由 list_flash_price_campaigns 回傳的 id 欄位）"),
 ) -> dict:

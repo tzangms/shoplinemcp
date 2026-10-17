@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_put, api_patch
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_gift(
     gift_data: dict = Field(description="贈品資料，例如 {name, sku, quantity, ...}"),
 ) -> dict:
@@ -37,7 +37,7 @@ def create_gift(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_gift(
     gift_id: str = Field(description="贈品 ID"),
     gift_data: dict = Field(description="要更新的贈品欄位，例如 {name, quantity, ...}"),
@@ -68,7 +68,7 @@ def update_gift(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_gift_quantity_by_sku(
     sku: str = Field(description="贈品 SKU 編號"),
     quantity: int = Field(description="新的庫存數量（絕對值，非差異）"),
@@ -96,7 +96,7 @@ def update_gift_quantity_by_sku(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_addon_product(
     addon_data: dict = Field(description="加購商品資料，例如 {name, sku, price, quantity, ...}"),
 ) -> dict:
@@ -125,7 +125,7 @@ def create_addon_product(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_addon_product(
     addon_product_id: str = Field(description="加購商品 ID"),
     addon_data: dict = Field(description="要更新的加購商品欄位，例如 {name, price, ...}"),
@@ -157,7 +157,7 @@ def update_addon_product(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_addon_product_quantity(
     addon_product_id: str = Field(description="加購商品 ID"),
     quantity: int = Field(description="新的庫存數量（絕對值，非差異）"),
@@ -186,7 +186,7 @@ def update_addon_product_quantity(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_addon_product_quantity_by_sku(
     sku: str = Field(description="加購商品 SKU 編號"),
     quantity: int = Field(description="新的庫存數量（絕對值，非差異）"),

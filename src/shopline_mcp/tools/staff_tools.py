@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_staff_permissions(
     staff_id: str = Field(description="員工 ID（可由 get_token_info 回傳的 staff.id 取得）"),
 ) -> dict:

@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_put
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_return_order(
     return_order_data: dict = Field(
         description=(
@@ -45,7 +45,7 @@ def create_return_order(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_return_order(
     return_order_id: str = Field(description="退貨單 ID"),
     return_order_data: dict = Field(

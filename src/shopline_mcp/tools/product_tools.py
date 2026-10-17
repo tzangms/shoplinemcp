@@ -5,7 +5,7 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import (
     api_get, fetch_all_pages, fetch_pages_with_total, money_to_float,
     get_translation, resolve_field, extract_image_urls, MAX_SCAN_PAGES, pages_for
@@ -83,7 +83,7 @@ def _summarize_product(p):
 # ============================================================
 # Tool 1: get_product_list — 商品列表 / 商品搜尋
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_product_list(
     keyword: Optional[str] = Field(default=None, description="關鍵字搜尋，由 Shopline 後端比對商品名稱 / SKU / 條碼"),
     sku: Optional[str] = Field(default=None, description="以 SKU 精準查詢（完全相符）。查特定貨品時優先用這個，不會漏抓"),
@@ -196,7 +196,7 @@ def get_product_list(
 # ============================================================
 # Tool 2: get_product_variants — 商品 SKU 變體明細
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_product_variants(
     product_id: str = Field(description="商品 ID（由 get_product_list / get_product_by_sku 回傳的 id 欄位取得）"),
 ) -> dict:
@@ -244,7 +244,7 @@ def get_product_variants(
 # ============================================================
 # Tool 2b: get_product_by_sku — 以 SKU 精準查貨況與商品圖
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_product_by_sku(
     sku: str = Field(description="商品或變體的 SKU（完全相符）"),
 ) -> dict:
@@ -288,7 +288,7 @@ def get_product_by_sku(
 # ============================================================
 # Tool 3: get_inventory_overview — 庫存總覽
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_inventory_overview(
     brand: Optional[str] = Field(default=None, description="品牌篩選"),
 ) -> dict:
@@ -374,7 +374,7 @@ def get_inventory_overview(
 # ============================================================
 # Tool 4: get_low_stock_alerts — 低庫存警示
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_low_stock_alerts(
     threshold: int = Field(default=5, description="庫存低於此值即警示"),
 ) -> dict:
@@ -421,7 +421,7 @@ def get_low_stock_alerts(
 # ============================================================
 # Tool 5: get_warehouses — 倉庫列表
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_warehouses() -> dict:
     """取得所有倉庫/門市據點列表。"""
     data = api_get("warehouses", params={"per_page": 50})
@@ -443,7 +443,7 @@ def get_warehouses() -> dict:
 # ============================================================
 # Tool 6: get_stock_by_warehouse — 各倉庫 SKU 庫存
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_stock_by_warehouse(
     product_id: Optional[str] = Field(default=None, description="商品 ID（不填則查詢全部商品，但較慢）"),
     warehouse_id: Optional[str] = Field(default=None, description="倉庫 ID 篩選（僅看特定倉庫）"),
@@ -564,7 +564,7 @@ def get_stock_by_warehouse(
 # ============================================================
 # Tool 7: get_locked_inventory — 鎖定（預留）庫存查詢
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_locked_inventory() -> dict:
     """
     【用途】
@@ -625,7 +625,7 @@ def get_locked_inventory() -> dict:
 # ============================================================
 # Tool 8: list_purchase_orders — POS 採購單列表
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_purchase_orders(
     max_results: int = Field(default=50, description="最多回傳筆數"),
 ) -> dict:
@@ -663,7 +663,7 @@ def list_purchase_orders(
 # ============================================================
 # Tool 9: get_purchase_order_detail — POS 採購單明細
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_purchase_order_detail(
     purchase_order_id: str = Field(description="採購單 ID"),
 ) -> dict:

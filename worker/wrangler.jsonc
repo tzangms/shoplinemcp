@@ -1,0 +1,19 @@
+{
+  "name": "shopline-mcp",
+  "main": "src/entry.py",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["python_workers"],
+  // 縮小打包：排除 server 跑不到的檔案（免費方案 gzip 上限 3MB）
+  "python_modules": {
+    "exclude": [
+      "**/*.pyc",
+      "**/*.pyi",
+      "**/RECORD",
+      "**/licenses/**",
+      "**/LICENSE*",
+      "pydantic/v1/**",
+      "pydantic/mypy.py",
+      "mcp/cli/**"
+    ]
+  }
+}

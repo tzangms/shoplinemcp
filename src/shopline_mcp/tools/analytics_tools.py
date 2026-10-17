@@ -5,7 +5,7 @@
 from typing import Optional, Literal
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import (
     api_get, fetch_all_pages, money_to_float, get_translation, resolve_field,
     MAX_SCAN_PAGES, pages_for
@@ -19,7 +19,7 @@ VALID_ORDER_STATUSES = {"completed", "confirmed"}
 # ============================================================
 # Tool 1: get_rfm_analysis — RFM 分群分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_rfm_analysis(
     start_date: str = Field(description="分析區間起始 YYYY-MM-DD"),
     end_date: str = Field(description="分析區間結束 YYYY-MM-DD"),
@@ -113,7 +113,7 @@ def get_rfm_analysis(
 # ============================================================
 # Tool 2: get_repurchase_analysis — 回購率分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_repurchase_analysis(
     start_date: str = Field(description="分析區間起始 YYYY-MM-DD"),
     end_date: str = Field(description="分析區間結束 YYYY-MM-DD"),
@@ -183,7 +183,7 @@ def get_repurchase_analysis(
 # ============================================================
 # Tool 3: get_customer_geo_analysis — 客戶地區分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_customer_geo_analysis(
     start_date: str = Field(description="分析區間起始 YYYY-MM-DD"),
     end_date: str = Field(description="分析區間結束 YYYY-MM-DD"),
@@ -237,7 +237,7 @@ def get_customer_geo_analysis(
 # ============================================================
 # Tool 4: get_inventory_turnover — 庫存周轉分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_inventory_turnover(
     start_date: str = Field(description="分析區間起始 YYYY-MM-DD"),
     end_date: str = Field(description="分析區間結束 YYYY-MM-DD"),
@@ -310,7 +310,7 @@ def get_inventory_turnover(
 # ============================================================
 # Tool 5: get_category_sales — 商品分類銷售分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_category_sales(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -410,7 +410,7 @@ def get_category_sales(
 # ============================================================
 # Tool 6: get_promotion_analysis — 促銷活動分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_promotion_analysis(
     status: Literal["active", "inactive", "hidden", "all"] = Field(default="all", description="活動狀態篩選"),
     discount_type: Optional[str] = Field(default=None, description="折扣類型篩選（amount/percentage/free_shipping/addon）"),
@@ -472,7 +472,7 @@ def get_promotion_analysis(
 # ============================================================
 # Tool 7: get_refund_by_store — 各門市/通路退貨退款分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_refund_by_store(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -561,7 +561,7 @@ def get_refund_by_store(
 # ============================================================
 # Tool 8: get_stock_transfer_suggestions — 跨倉庫調撥建議
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_stock_transfer_suggestions(
     min_stock_diff: int = Field(default=10, description="倉庫間庫存差距門檻，差距 >= 此值才建議調撥"),
 ) -> dict:
@@ -648,7 +648,7 @@ def get_stock_transfer_suggestions(
 # ============================================================
 # Tool 9: get_promotion_roi — 促銷活動 ROI 分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_promotion_roi(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -757,7 +757,7 @@ def get_promotion_roi(
 # ============================================================
 # Tool 10: get_customer_lifecycle — 客戶生命週期遷移分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_customer_lifecycle(
     period1_start: str = Field(description="第一期起始日期 YYYY-MM-DD"),
     period1_end: str = Field(description="第一期結束日期 YYYY-MM-DD"),
@@ -931,7 +931,7 @@ def get_customer_lifecycle(
 # ============================================================
 # Tool 11: get_slow_movers — 滯銷商品分析
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_slow_movers(
     start_date: str = Field(description="分析區間起始 YYYY-MM-DD"),
     end_date: str = Field(description="分析區間結束 YYYY-MM-DD"),

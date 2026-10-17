@@ -6,11 +6,11 @@ from typing import List
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_put, api_delete
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_product(
     product_data: dict = Field(description="完整商品建立資料，依 Shopline API 規格傳入（含 title、description、price 等欄位）"),
 ) -> dict:
@@ -41,7 +41,7 @@ def create_product(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_product(
     product_id: str = Field(description="商品內部 ID"),
     product_data: dict = Field(description="要更新的商品欄位（僅需傳入要修改的欄位）"),
@@ -73,7 +73,7 @@ def update_product(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_product(
     product_id: str = Field(description="商品內部 ID"),
 ) -> dict:
@@ -101,7 +101,7 @@ def delete_product(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_product_quantity(
     product_id: str = Field(description="商品內部 ID"),
     quantity: int = Field(description="新庫存數量（絕對值，非增減量）"),
@@ -131,7 +131,7 @@ def update_product_quantity(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_product_price(
     product_id: str = Field(description="商品內部 ID"),
     price: float = Field(description="新售價（TWD）"),
@@ -161,7 +161,7 @@ def update_product_price(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_product_variation(
     product_id: str = Field(description="商品內部 ID"),
     variation_data: dict = Field(description="變體資料（含 SKU、價格、庫存、規格選項等）"),
@@ -193,7 +193,7 @@ def create_product_variation(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_product_variation(
     product_id: str = Field(description="商品內部 ID"),
     variation_id: str = Field(description="變體內部 ID"),
@@ -227,7 +227,7 @@ def update_product_variation(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_product_variation(
     product_id: str = Field(description="商品內部 ID"),
     variation_id: str = Field(description="變體內部 ID"),
@@ -257,7 +257,7 @@ def delete_product_variation(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_variation_quantity(
     product_id: str = Field(description="商品內部 ID"),
     variation_id: str = Field(description="變體內部 ID"),
@@ -288,7 +288,7 @@ def update_variation_quantity(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_variation_price(
     product_id: str = Field(description="商品內部 ID"),
     variation_id: str = Field(description="變體內部 ID"),
@@ -318,7 +318,7 @@ def update_variation_price(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_product_tags(
     product_id: str = Field(description="商品內部 ID"),
     tags: List[str] = Field(description="標籤列表（會取代現有標籤）"),
@@ -348,7 +348,7 @@ def update_product_tags(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def add_product_images(
     product_id: str = Field(description="商品內部 ID"),
     image_urls: List[str] = Field(description="圖片 URL 列表（公開可存取的圖片連結）"),
@@ -381,7 +381,7 @@ def add_product_images(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_product_images(
     product_id: str = Field(description="商品內部 ID"),
     image_ids: List[str] = Field(description="要刪除的圖片 ID 列表"),
@@ -410,7 +410,7 @@ def delete_product_images(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def bulk_update_quantities(
     updates: List[dict] = Field(
         description="庫存更新列表，每筆為 {sku: str, quantity: int}，以 SKU 識別商品/變體"
@@ -442,7 +442,7 @@ def bulk_update_quantities(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def bulk_assign_categories(
     product_ids: List[str] = Field(description="商品 ID 列表"),
     category_ids: List[str] = Field(description="要指派的分類 ID 列表"),

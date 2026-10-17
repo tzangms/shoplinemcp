@@ -5,7 +5,7 @@
 from typing import Optional, Literal
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import (
     api_get, fetch_all_pages, fetch_all_pages_by_date_segments,
     money_to_float, get_translation, ShoplineAPIError, resolve_field
@@ -21,7 +21,7 @@ VALID_ORDER_STATUSES = {"completed", "confirmed"}
 # ============================================================
 # Tool 1: query_orders — 依條件查詢訂單
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def query_orders(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -97,7 +97,7 @@ def query_orders(
 # ============================================================
 # Tool 2: get_sales_summary — 銷售摘要
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_sales_summary(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -198,7 +198,7 @@ def get_sales_summary(
 # ============================================================
 # Tool 3: get_top_products — 熱銷/滯銷商品排行
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_top_products(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -271,7 +271,7 @@ def get_top_products(
 # ============================================================
 # Tool 4: get_sales_trend — 銷售趨勢
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_sales_trend(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -336,7 +336,7 @@ def get_sales_trend(
 # ============================================================
 # Tool 5: get_channel_comparison — 門市比較
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_channel_comparison(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -394,7 +394,7 @@ def get_channel_comparison(
 # ============================================================
 # Tool 6: get_order_detail — 訂單明細
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_order_detail(
     order_id: str = Field(description="訂單內部 ID（由 query_orders 回傳的 id 欄位，非 order_number）"),
 ) -> dict:
@@ -458,7 +458,7 @@ def get_order_detail(
 # ============================================================
 # Tool 7: get_refund_summary — 退貨退款統計
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_refund_summary(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -516,7 +516,7 @@ def get_refund_summary(
 # ============================================================
 # Tool 8: get_archived_orders — 已封存訂單查詢
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_archived_orders(
     start_date: str = Field(description="起始日期 YYYY-MM-DD。⚠️ 本工具會逐頁掃描區間內所有訂單，區間越大越慢，請只查實際需要的最小區間（如單週或單月），避免一次查詢過長期間。"),
     end_date: str = Field(description="結束日期 YYYY-MM-DD。建議與 start_date 維持較短區間以加快查詢。"),
@@ -595,7 +595,7 @@ def get_archived_orders(
 # ============================================================
 # Tool 9: get_order_labels — 訂單配送標籤
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_order_labels(
     order_id: str = Field(description="訂單內部 ID（由 query_orders 回傳的 id 欄位，非 order_number）"),
 ) -> dict:
@@ -628,7 +628,7 @@ def get_order_labels(
 # ============================================================
 # Tool 10: get_order_tags — 訂單標籤
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_order_tags(
     order_id: str = Field(description="訂單內部 ID（由 query_orders 回傳的 id 欄位，非 order_number）"),
 ) -> dict:
@@ -657,7 +657,7 @@ def get_order_tags(
 # ============================================================
 # Tool 11: get_order_action_logs — 訂單操作歷程
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_order_action_logs(
     order_id: str = Field(description="訂單內部 ID（由 query_orders 回傳的 id 欄位，非 order_number）"),
 ) -> dict:
@@ -695,7 +695,7 @@ def get_order_action_logs(
 # ============================================================
 # Tool 12: get_order_transactions — 訂單付款交易紀錄
 # ============================================================
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_order_transactions(
     order_id: str = Field(description="訂單內部 ID（由 query_orders 回傳的 id 欄位，非 order_number）"),
 ) -> dict:

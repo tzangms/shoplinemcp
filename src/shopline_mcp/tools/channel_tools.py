@@ -5,7 +5,7 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import (
     api_get, get_translation, resolve_field, fetch_across_platforms
 )
@@ -14,7 +14,7 @@ from shopline_mcp.tools.base_tool import (
 DEFAULT_CHANNEL_PLATFORMS = ["shopline", "shopline_pos"]
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_channels(
     platform: Optional[str] = Field(
         default=None,
@@ -67,7 +67,7 @@ def list_channels(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_channel_detail(
     channel_id: str = Field(description="銷售渠道 ID（由 list_channels 回傳的 id 欄位取得）"),
 ) -> dict:

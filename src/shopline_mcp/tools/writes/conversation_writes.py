@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def send_order_message(
     message_data: dict = Field(
         description=(
@@ -44,7 +44,7 @@ def send_order_message(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def send_shop_message(
     message_data: dict = Field(
         description=(

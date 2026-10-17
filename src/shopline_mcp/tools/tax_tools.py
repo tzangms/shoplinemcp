@@ -2,11 +2,11 @@
 稅率 Tools — 商店稅率設定查詢
 """
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, get_translation
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_taxes() -> dict:
     """取得商店設定的稅率清單。
 

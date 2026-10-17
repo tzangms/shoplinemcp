@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_put
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_order_delivery(
     delivery_id: str = Field(description="訂單配送記錄 ID"),
     delivery_data: dict = Field(

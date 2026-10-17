@@ -5,11 +5,11 @@
 from typing import List
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, _api_request
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_purchase_order(
     purchase_order_data: dict = Field(
         description="採購單資料，例如 {supplier_id, items: [{sku, quantity, cost}, ...], ...}"
@@ -40,7 +40,7 @@ def create_purchase_order(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_purchase_orders(
     purchase_order_ids: List[str] = Field(description="要刪除的採購單 ID 列表（可批次刪除多筆）"),
 ) -> dict:

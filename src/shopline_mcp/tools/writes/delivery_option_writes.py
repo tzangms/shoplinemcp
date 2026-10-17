@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_put
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_pickup_store(
     delivery_option_id: str = Field(description="配送選項 ID"),
     pickup_store_data: dict = Field(
