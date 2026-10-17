@@ -1,0 +1,29 @@
+[project]
+name = "shopline-worker"
+version = "0.1.0"
+description = "shopline MCP server 的 Cloudflare Python Worker 部署殼"
+requires-python = ">=3.12"
+dependencies = [
+    "shopline-mcp",
+    # mcp 2.x 改了 FastMCP API，server 端也要求 cryptography；鎖 1.x（同 requirements.txt）
+    "mcp>=1.12,<2",
+]
+
+[dependency-groups]
+dev = ["workers-py"]
+
+[tool.uv.sources]
+shopline-mcp = { path = "..", editable = false }
+
+[tool.uv]
+# 縮小 Worker 打包（免費方案 gzip 上限 3MB）：
+# - pyjwt[crypto]/cryptography：只有 mcp client 端 OAuth 用到，server 不需要（~7MB）
+# - charset-normalizer：requests 的選配編碼偵測，缺了會退回 utf-8；Shopline 回 JSON 不受影響
+# - python-multipart：starlette 的選配表單解析，只有 OAuth 端點會用到
+# - typer：mcp[cli] 的 `mcp dev` 指令用，Worker 不需要
+override-dependencies = [
+    "pyjwt; sys_platform == 'never'",
+    "charset-normalizer; sys_platform == 'never'",
+    "python-multipart; sys_platform == 'never'",
+    "typer; sys_platform == 'never'",
+]

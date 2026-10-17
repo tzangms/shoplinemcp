@@ -1,0 +1,5 @@
+python_modules/
+.venv-workers/
+dist/
+.dev.vars
+.wrangler/
