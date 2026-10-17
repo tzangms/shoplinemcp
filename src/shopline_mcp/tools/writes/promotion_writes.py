@@ -5,7 +5,7 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_put, api_delete
 
 
@@ -13,7 +13,7 @@ from shopline_mcp.tools.base_tool import api_post, api_put, api_delete
 # 促銷活動 (Promotions)
 # =====================================================================
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_promotion(
     promotion_data: dict = Field(description="促銷活動資料（參考 Shopline promotion 物件結構）"),
 ) -> dict:
@@ -44,7 +44,7 @@ def create_promotion(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_promotion(
     promotion_id: str = Field(description="促銷活動 ID"),
     promotion_data: dict = Field(description="要更新的促銷活動欄位（僅傳入需修改的欄位）"),
@@ -80,7 +80,7 @@ def update_promotion(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_promotion(
     promotion_id: str = Field(description="促銷活動 ID"),
 ) -> dict:
@@ -112,7 +112,7 @@ def delete_promotion(
 # 優惠券 (Coupons)
 # =====================================================================
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def send_coupon(
     coupon_data: dict = Field(description="優惠券發送資料，通常包含 coupon_id 與目標客戶識別資訊"),
 ) -> dict:
@@ -143,7 +143,7 @@ def send_coupon(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def redeem_coupon(
     coupon_data: dict = Field(description="優惠券核銷資料，通常包含 coupon_code 與訂單或客戶識別資訊"),
 ) -> dict:
@@ -175,7 +175,7 @@ def redeem_coupon(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def claim_coupon(
     coupon_data: dict = Field(description="優惠券領取資料，通常包含 coupon_code 與客戶識別資訊"),
 ) -> dict:
@@ -211,7 +211,7 @@ def claim_coupon(
 # 快閃價格活動 (Flash Price Campaigns)
 # =====================================================================
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_flash_price_campaign(
     campaign_data: dict = Field(description="快閃價格活動資料（參考 Shopline flash_price_campaign 物件結構）"),
 ) -> dict:
@@ -243,7 +243,7 @@ def create_flash_price_campaign(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_flash_price_campaign(
     campaign_id: str = Field(description="快閃價格活動 ID"),
     campaign_data: dict = Field(description="要更新的活動欄位（僅傳入需修改的欄位）"),
@@ -279,7 +279,7 @@ def update_flash_price_campaign(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_flash_price_campaign(
     campaign_id: str = Field(description="快閃價格活動 ID"),
 ) -> dict:
@@ -312,7 +312,7 @@ def delete_flash_price_campaign(
 # 聯盟行銷活動 (Affiliate Campaigns)
 # =====================================================================
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_affiliate_campaign(
     campaign_data: dict = Field(description="聯盟行銷活動資料（參考 Shopline affiliate_campaign 物件結構）"),
 ) -> dict:
@@ -344,7 +344,7 @@ def create_affiliate_campaign(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_affiliate_campaign(
     campaign_id: str = Field(description="聯盟行銷活動 ID"),
     campaign_data: dict = Field(description="要更新的活動欄位（僅傳入需修改的欄位）"),
@@ -381,7 +381,7 @@ def update_affiliate_campaign(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def delete_affiliate_campaign(
     campaign_id: str = Field(description="聯盟行銷活動 ID"),
 ) -> dict:

@@ -2,11 +2,11 @@
 自訂欄位 Tools — 客戶自訂欄位定義查詢
 """
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, get_translation
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_custom_fields() -> dict:
     """取得商店定義的客戶自訂欄位清單。
 

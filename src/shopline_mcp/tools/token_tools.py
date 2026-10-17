@@ -2,11 +2,11 @@
 Token Tools — API Token 資訊與權限查詢
 """
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_token_info() -> dict:
     """取得目前 API Token 的資訊與授權範圍。
 

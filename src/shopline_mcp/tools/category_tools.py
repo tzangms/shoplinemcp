@@ -5,13 +5,13 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import (
     api_get, fetch_all_pages, get_translation, extract_image_urls
 )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_category_tree() -> dict:
     """取得所有商品分類並組成樹狀結構。
 
@@ -56,7 +56,7 @@ def get_category_tree() -> dict:
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_category_detail(
     category_id: str = Field(description="分類 ID（由 get_category_tree 回傳的 id 欄位）"),
 ) -> dict:

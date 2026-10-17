@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, get_translation, money_to_float
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_delivery_options() -> dict:
     """取得商店啟用的配送方式清單。
 
@@ -58,7 +58,7 @@ def list_delivery_options() -> dict:
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_delivery_option_detail(
     delivery_option_id: str = Field(description="物流方式 ID（由 list_delivery_options 回傳的 id 欄位取得）"),
 ) -> dict:
@@ -108,7 +108,7 @@ def get_delivery_option_detail(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_delivery_time_slots(
     delivery_option_id: str = Field(description="物流方式 ID（由 list_delivery_options 回傳的 id 欄位取得）"),
 ) -> dict:

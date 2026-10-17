@@ -5,11 +5,11 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, money_to_float, get_translation
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_product_reviews(
     max_results: int = Field(default=50, description="最多回傳筆數"),
 ) -> dict:
@@ -52,7 +52,7 @@ def list_product_reviews(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_product_review_detail(
     comment_id: str = Field(description="評價 ID（由 list_product_reviews 回傳的 id 欄位）"),
 ) -> dict:

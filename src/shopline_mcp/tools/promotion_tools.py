@@ -5,11 +5,11 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, money_to_float, get_translation, resolve_field
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_promotions(
     status: Optional[str] = Field(default=None, description="促銷狀態篩選，例如 'active'、'inactive'、'scheduled'"),
     max_results: int = Field(default=50, description="最多回傳筆數"),
@@ -54,7 +54,7 @@ def list_promotions(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_promotion_detail(
     promotion_id: str = Field(description="促銷活動 ID（由 list_promotions 或 search_promotions 回傳的 id 欄位）"),
 ) -> dict:
@@ -93,7 +93,7 @@ def get_promotion_detail(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def search_promotions(
     keyword: str = Field(description="搜尋關鍵字（促銷名稱）"),
     max_results: int = Field(default=50, description="最多回傳筆數"),

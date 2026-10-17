@@ -6,11 +6,11 @@ from typing import Optional, List
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post, api_patch, resolve_field
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def cancel_order(
     order_id: str = Field(description="訂單 ID"),
     reason: Optional[str] = Field(default=None, description="取消原因（選填）"),
@@ -47,7 +47,7 @@ def cancel_order(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def execute_order_shipment(
     order_id: str = Field(description="訂單 ID"),
 ) -> dict:
@@ -78,7 +78,7 @@ def execute_order_shipment(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def bulk_execute_shipment(
     order_ids: List[str] = Field(description="訂單 ID 列表，批次出貨"),
 ) -> dict:
@@ -109,7 +109,7 @@ def bulk_execute_shipment(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def split_order(
     order_id: str = Field(description="訂單 ID"),
     split_config: dict = Field(description="拆單設定，包含各子單的商品與配送資訊"),
@@ -142,7 +142,7 @@ def split_order(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_order(
     order_id: str = Field(description="訂單 ID"),
     fields: dict = Field(description="要更新的欄位與值，以字典形式傳入"),
@@ -178,7 +178,7 @@ def update_order(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_order_status(
     order_id: str = Field(description="訂單 ID"),
     status: Optional[str] = Field(default=None, description="訂單狀態（如 confirmed / cancelled）"),
@@ -242,7 +242,7 @@ def update_order_status(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def update_order_tags(
     order_id: str = Field(description="訂單 ID"),
     tags: List[str] = Field(description="標籤列表（會取代現有標籤）"),
@@ -272,7 +272,7 @@ def update_order_tags(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_order(
     order_data: dict = Field(description="完整訂單資料，依 Shopline API 規格傳入所有必要欄位"),
 ) -> dict:

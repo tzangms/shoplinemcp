@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, fetch_all_pages
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_membership_tiers() -> dict:
     """取得商店的所有會員等級定義。
 
@@ -43,7 +43,7 @@ def list_membership_tiers() -> dict:
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_customer_tier_history(
     customer_id: str = Field(description="客戶內部 ID"),
 ) -> dict:

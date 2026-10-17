@@ -2,11 +2,11 @@
 會員點數規則 Tools — 點數規則查詢
 """
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_member_point_rules() -> dict:
     """取得商店的會員點數規則設定。
 

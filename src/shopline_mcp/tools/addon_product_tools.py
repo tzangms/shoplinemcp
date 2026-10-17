@@ -5,11 +5,11 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, money_to_float, get_translation, resolve_field
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_addon_products(
     search_keyword: Optional[str] = Field(default=None, description="搜尋關鍵字（加購商品名稱）"),
     max_results: int = Field(default=50, description="最多回傳筆數"),

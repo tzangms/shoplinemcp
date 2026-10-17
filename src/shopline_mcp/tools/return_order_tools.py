@@ -5,11 +5,11 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import api_get, fetch_all_pages, money_to_float, get_translation, resolve_field
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_return_orders(
     start_date: Optional[str] = Field(default=None, description="查詢起始日期（ISO 8601 格式，如 2024-01-01T00:00:00Z）"),
     end_date: Optional[str] = Field(default=None, description="查詢結束日期（ISO 8601 格式，如 2024-12-31T23:59:59Z）"),
@@ -63,7 +63,7 @@ def list_return_orders(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_return_order_detail(
     return_order_id: str = Field(description="退貨單 ID（由 list_return_orders 回傳的 id 欄位）"),
 ) -> dict:

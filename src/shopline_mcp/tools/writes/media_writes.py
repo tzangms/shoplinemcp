@@ -4,11 +4,11 @@
 
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import WRITE, mcp
 from shopline_mcp.tools.base_tool import api_post
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def upload_media(
     media_data: dict = Field(
         description=(
@@ -45,7 +45,7 @@ def upload_media(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=WRITE)
 def create_metafield(
     metafield_data: dict = Field(
         description=(

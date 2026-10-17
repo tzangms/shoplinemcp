@@ -5,13 +5,13 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import (
     api_get, fetch_all_pages, resolve_field, pages_for
 )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_customer_groups(
     search_keyword: Optional[str] = Field(default=None, description="群組名稱搜尋關鍵字"),
     max_results: int = Field(default=50, description="最多回傳筆數"),
@@ -55,7 +55,7 @@ def list_customer_groups(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_customer_group_members(
     group_id: str = Field(description="客戶群組 ID（由 list_customer_groups 回傳）"),
 ) -> dict:

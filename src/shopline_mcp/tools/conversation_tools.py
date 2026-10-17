@@ -5,7 +5,7 @@
 from typing import Optional
 from pydantic import Field
 
-from shopline_mcp.app import mcp
+from shopline_mcp.app import READ_ONLY, mcp
 from shopline_mcp.tools.base_tool import (
     fetch_all_pages, resolve_field, fetch_across_platforms
 )
@@ -15,7 +15,7 @@ from shopline_mcp.tools.base_tool import (
 CONVERSATION_PLATFORMS = ["shop_messages", "order_messages", "return_order_messages"]
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def list_conversations(
     platform: Optional[str] = Field(
         default=None,
@@ -69,7 +69,7 @@ def list_conversations(
     }
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 def get_conversation_messages(
     conversation_id: str = Field(description="對話 ID（由 list_conversations 回傳的 id 欄位）"),
     max_results: int = Field(default=50, description="最多回傳訊息筆數"),
